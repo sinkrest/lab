@@ -3,58 +3,170 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Snake Game</title>
+    <title>Snake Game — Sinkrest Lab</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Segoe UI', Arial, sans-serif; background: #0b1628; color: #e4eaf4; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; }
-        h1 { font-size: 2rem; margin-bottom: .3rem; }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; background: #0b1628; color: #e4eaf4; margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+
+        .back { position: absolute; top: 1.2rem; left: 1.2rem; color: #27c0e7; text-decoration: none; font-size: .9rem; z-index: 10; }
+
+        .header {
+            background: linear-gradient(135deg, #0b1628 0%, #132744 50%, #1a3a6b 100%);
+            width: 100%;
+            text-align: center;
+            padding: 2.5rem 1rem 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -40%;
+            right: -10%;
+            width: 350px;
+            height: 350px;
+            background: radial-gradient(circle, rgba(39,192,231,0.08) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+        .badge {
+            display: inline-block;
+            background: rgba(39,192,231,0.15);
+            border: 1px solid rgba(39,192,231,0.3);
+            color: #27c0e7;
+            font-size: .78rem;
+            font-weight: 600;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            padding: .4rem 1rem;
+            border-radius: 20px;
+            margin-bottom: .8rem;
+        }
+        h1 { font-size: 2rem; font-weight: 800; color: #fff; margin-bottom: .3rem; }
         h1 span { color: #27c0e7; }
-        .score { font-size: 1.1rem; color: #7a92b5; margin-bottom: 1rem; }
-        canvas { border: 2px solid #1e488f; border-radius: 8px; background: #101d30; display: block; }
+
+        .score-bar {
+            display: flex;
+            justify-content: center;
+            gap: 2.5rem;
+            padding: 1.2rem;
+            background: rgba(255,255,255,0.03);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            width: 100%;
+        }
+        .score-item .label { font-size: .72rem; color: #5d7da3; text-transform: uppercase; letter-spacing: .06em; }
+        .score-item .value { font-size: 1.4rem; font-weight: 800; color: #27c0e7; }
+
+        .game-area {
+            position: relative;
+            display: inline-block;
+            margin: 1.5rem 0;
+        }
+        canvas {
+            border: 2px solid rgba(39,192,231,0.3);
+            border-radius: 12px;
+            background: #0d1f35;
+            display: block;
+            box-shadow: 0 4px 30px rgba(39,192,231,0.08);
+        }
+
         .controls { margin-top: 1.2rem; display: grid; grid-template-areas: ". up ." "left down right"; gap: .5rem; }
-        .controls button { width: 52px; height: 52px; font-size: 1.4rem; border: 1px solid #1e488f; background: rgba(255,255,255,0.06); color: #27c0e7; border-radius: 10px; cursor: pointer; }
-        .controls button:active { background: rgba(39,192,231,0.2); }
+        .controls button {
+            width: 56px; height: 56px; font-size: 1.4rem;
+            border: 1px solid rgba(39,192,231,0.25);
+            background: rgba(255,255,255,0.05);
+            color: #27c0e7;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background .15s, transform .1s;
+            backdrop-filter: blur(4px);
+        }
+        .controls button:hover { background: rgba(39,192,231,0.15); }
+        .controls button:active { transform: scale(0.92); background: rgba(39,192,231,0.25); }
         .btn-up { grid-area: up; }
         .btn-down { grid-area: down; }
         .btn-left { grid-area: left; }
         .btn-right { grid-area: right; }
-        .info { margin-top: 1.5rem; color: #4a6080; font-size: .85rem; }
-        .overlay { position: absolute; display: none; flex-direction: column; align-items: center; justify-content: center; background: rgba(11,22,40,0.88); border-radius: 8px; }
-        .overlay h2 { font-size: 1.6rem; margin-bottom: .5rem; }
-        .overlay button { margin-top: .8rem; padding: .6rem 1.6rem; background: linear-gradient(90deg,#27c0e7,#1e488f); color: #fff; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; }
-        a { color: #27c0e7; }
+        .info { margin-top: 1.5rem; color: #4a6080; font-size: .85rem; text-align: center; padding-bottom: 2rem; }
+        .info a { color: #27c0e7; text-decoration: none; }
+
+        .overlay {
+            position: absolute;
+            top: 0; left: 0;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(11,22,40,0.92);
+            backdrop-filter: blur(6px);
+            border-radius: 12px;
+        }
+        .overlay h2 { font-size: 1.8rem; margin-bottom: .5rem; color: #fff; }
+        .overlay p { color: #94a7c8; font-size: 1rem; }
+        .overlay button {
+            margin-top: 1rem;
+            padding: .75rem 2rem;
+            background: linear-gradient(90deg, #27c0e7, #1e488f);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.05rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform .15s, box-shadow .2s;
+            font-family: 'Inter', sans-serif;
+        }
+        .overlay button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(39,192,231,0.3);
+        }
     </style>
 </head>
 <body>
-    <h1>🐍 <span>Snake</span> Game</h1>
-    <div class="score">Score: <span id="score">0</span> &nbsp;|&nbsp; Best: <span id="best">0</span></div>
-    <div style="position:relative; display:inline-block;">
+    <a href="index.html" class="back">← All Projects</a>
+
+    <div class="header">
+        <div class="badge">🎮 Arcade</div>
+        <h1>🐍 <span>Snake</span> Game</h1>
+    </div>
+
+    <div class="score-bar">
+        <div class="score-item"><div class="label">Score</div><div class="value" id="score">0</div></div>
+        <div class="score-item"><div class="label">Best</div><div class="value" id="best">0</div></div>
+        <div class="score-item"><div class="label">Speed</div><div class="value" id="speed">1x</div></div>
+    </div>
+
+    <div class="game-area">
         <canvas id="game" width="400" height="400"></canvas>
-        <div class="overlay" id="overlay" style="width:400px;height:400px;top:0;left:0;">
-            <h2 id="overlayTitle">Game Over</h2>
-            <p id="overlayMsg"></p>
-            <button onclick="startGame()">Play Again</button>
+        <div class="overlay" id="overlay" style="width:400px;height:400px;">
+            <h2 id="overlayTitle">🐍 Snake</h2>
+            <p id="overlayMsg">Press any arrow key or tap Play</p>
+            <button onclick="startGame()">Play</button>
         </div>
     </div>
+
     <div class="controls">
         <button class="btn-up" onclick="changeDir(0,-1)">▲</button>
         <button class="btn-left" onclick="changeDir(-1,0)">◀</button>
         <button class="btn-down" onclick="changeDir(0,1)">▼</button>
         <button class="btn-right" onclick="changeDir(1,0)">▶</button>
     </div>
-    <div class="info">Arrow keys or WASD to move · Mobile: use buttons below · <a href="index.html">← All Projects</a></div>
+
+    <div class="info">Arrow keys or WASD to move · Mobile: use buttons · <a href="index.html">← All Projects</a></div>
 
     <script>
         const canvas = document.getElementById('game');
         const ctx = canvas.getContext('2d');
         const SIZE = 20, COLS = 20, ROWS = 20;
-        let snake, dir, nextDir, food, score, best = 0, loop, speed;
+        let snake, dir, nextDir, food, score, best = 0, loop, speed, baseSpeed;
 
         function startGame() {
             document.getElementById('overlay').style.display = 'none';
             snake = [{x:10,y:10}];
             dir = {x:1,y:0}; nextDir = {x:1,y:0};
-            score = 0; speed = 120;
+            score = 0; baseSpeed = 120; speed = baseSpeed;
             document.getElementById('score').textContent = score;
+            document.getElementById('speed').textContent = '1x';
             placeFood();
             if(loop) clearInterval(loop);
             loop = setInterval(tick, speed);
@@ -75,23 +187,44 @@
                 document.getElementById('score').textContent = score;
                 if(score > best) { best = score; document.getElementById('best').textContent = best; }
                 placeFood();
-                if(speed > 60) { speed -= 3; clearInterval(loop); loop = setInterval(tick, speed); }
+                if(speed > 55) {
+                    speed -= 3;
+                    clearInterval(loop);
+                    loop = setInterval(tick, speed);
+                    document.getElementById('speed').textContent = (baseSpeed / speed).toFixed(1) + 'x';
+                }
             } else { snake.pop(); }
             draw();
         }
 
         function draw() {
-            ctx.fillStyle = '#101d30'; ctx.fillRect(0,0,canvas.width,canvas.height);
-            // Grid
-            ctx.strokeStyle = 'rgba(255,255,255,0.03)';
-            for(let i=0;i<COLS;i++) for(let j=0;j<ROWS;j++) ctx.strokeRect(i*SIZE,j*SIZE,SIZE,SIZE);
+            ctx.fillStyle = '#0d1f35'; ctx.fillRect(0,0,canvas.width,canvas.height);
+            // Grid dots
+            ctx.fillStyle = 'rgba(39,192,231,0.04)';
+            for(let i=0;i<COLS;i++) for(let j=0;j<ROWS;j++) {
+                ctx.beginPath(); ctx.arc(i*SIZE+SIZE/2, j*SIZE+SIZE/2, 1, 0, Math.PI*2); ctx.fill();
+            }
+            // Food glow
+            const grd = ctx.createRadialGradient(food.x*SIZE+SIZE/2, food.y*SIZE+SIZE/2, 2, food.x*SIZE+SIZE/2, food.y*SIZE+SIZE/2, SIZE);
+            grd.addColorStop(0, 'rgba(231,76,60,0.3)');
+            grd.addColorStop(1, 'transparent');
+            ctx.fillStyle = grd;
+            ctx.fillRect(food.x*SIZE-SIZE/2, food.y*SIZE-SIZE/2, SIZE*2, SIZE*2);
             // Food
             ctx.fillStyle = '#e74c3c';
             ctx.beginPath(); ctx.arc(food.x*SIZE+SIZE/2, food.y*SIZE+SIZE/2, SIZE/2-2, 0, Math.PI*2); ctx.fill();
             // Snake
             snake.forEach((s,i) => {
-                ctx.fillStyle = i === 0 ? '#27c0e7' : `rgba(39,192,231,${Math.max(0.3, 1-i*0.04)})`;
-                ctx.beginPath(); ctx.roundRect(s.x*SIZE+1, s.y*SIZE+1, SIZE-2, SIZE-2, 4); ctx.fill();
+                const alpha = Math.max(0.3, 1 - i * 0.03);
+                ctx.fillStyle = i === 0 ? '#27c0e7' : `rgba(39,192,231,${alpha})`;
+                ctx.beginPath(); ctx.roundRect(s.x*SIZE+1, s.y*SIZE+1, SIZE-2, SIZE-2, 5); ctx.fill();
+                if(i === 0) {
+                    // Head glow
+                    ctx.shadowColor = '#27c0e7';
+                    ctx.shadowBlur = 12;
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
             });
         }
 
@@ -99,7 +232,7 @@
             clearInterval(loop); loop = null;
             const ov = document.getElementById('overlay');
             document.getElementById('overlayTitle').textContent = '💀 Game Over';
-            document.getElementById('overlayMsg').textContent = 'Score: ' + score;
+            document.getElementById('overlayMsg').textContent = 'Score: ' + score + (score === best && score > 0 ? ' — New Best!' : '');
             ov.style.display = 'flex';
         }
 
@@ -114,12 +247,9 @@
             const d = map[e.key]; if(d) { e.preventDefault(); changeDir(d[0],d[1]); }
         });
 
-        // Initial screen
-        document.getElementById('overlayTitle').textContent = '🐍 Snake';
-        document.getElementById('overlayMsg').textContent = 'Press any arrow key or tap Play';
+        // Initial
         document.getElementById('overlay').style.display = 'flex';
-        draw = draw; // ensure defined
-        ctx.fillStyle = '#101d30'; ctx.fillRect(0,0,400,400);
+        ctx.fillStyle = '#0d1f35'; ctx.fillRect(0,0,400,400);
     </script>
 </body>
 </html>
