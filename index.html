@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sinkrest Lab — Projects</title>
+    <title>Roman Martins Hub</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -53,12 +53,45 @@
         h1 span { color: #27c0e7; }
         .subtitle { color: #94a7c8; font-size: 1.1rem; max-width: 500px; margin: 0 auto; line-height: 1.6; }
 
+        .nav {
+            display: flex;
+            justify-content: center;
+            gap: .6rem;
+            padding: 1.2rem 1rem;
+            background: rgba(255,255,255,0.02);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            flex-wrap: wrap;
+        }
+        .nav a {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            color: #8a9dba;
+            padding: .5rem 1.1rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: .85rem;
+            font-weight: 600;
+            transition: all .2s;
+        }
+        .nav a:hover, .nav a.active { border-color: rgba(39,192,231,0.4); color: #27c0e7; background: rgba(39,192,231,0.1); }
+
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 3rem;
+            padding: 2rem 1rem 2.5rem;
+            flex-wrap: wrap;
+        }
+        .stat { text-align: center; }
+        .stat .num { font-size: 1.6rem; font-weight: 800; color: #27c0e7; }
+        .stat .label { font-size: .78rem; color: #5d7da3; margin-top: .15rem; text-transform: uppercase; letter-spacing: .06em; }
+
         .grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 1.4rem;
             max-width: 900px;
-            margin: -1.5rem auto 0;
+            margin: 0 auto;
             padding: 0 1.5rem 3rem;
             position: relative;
             z-index: 2;
@@ -107,17 +140,6 @@
             border: 1px solid rgba(39,192,231,0.2);
         }
 
-        .stats {
-            display: flex;
-            justify-content: center;
-            gap: 3rem;
-            padding: 2rem 1rem 2.5rem;
-            flex-wrap: wrap;
-        }
-        .stat { text-align: center; }
-        .stat .num { font-size: 1.6rem; font-weight: 800; color: #27c0e7; }
-        .stat .label { font-size: .78rem; color: #5d7da3; margin-top: .15rem; text-transform: uppercase; letter-spacing: .06em; }
-
         .footer {
             text-align: center;
             padding: 2.5rem 1rem;
@@ -131,22 +153,36 @@
 <body>
 
     <section class="hero">
-        <div class="badge">⚡ Open Lab</div>
-        <h1>Sinkrest <span>Lab</span></h1>
+        <div class="badge">⚡ Personal Hub</div>
+        <h1>Roman Martins <span>Hub</span></h1>
         <p class="subtitle">Projects, tools & experiments — built for builders.</p>
     </section>
 
+    <div class="nav">
+        <a href="index.html" class="active">🏠 Hub</a>
+        <a href="dashboard.html">📊 AI Dashboard</a>
+        <a href="toolkit.html">🛠️ PD Toolkit</a>
+        <a href="newsletter.html">📬 Newsletter</a>
+        <a href="snake.html">🏭 Pipeline Game</a>
+    </div>
+
     <div class="stats">
-        <div class="stat"><div class="num">3</div><div class="label">Projects</div></div>
-        <div class="stat"><div class="num">4</div><div class="label">Tools</div></div>
+        <div class="stat"><div class="num">4</div><div class="label">Projects</div></div>
+        <div class="stat"><div class="num">5</div><div class="label">Pages</div></div>
         <div class="stat"><div class="num">100%</div><div class="label">Open Source</div></div>
     </div>
 
     <div class="grid">
+        <a href="dashboard.html" class="card">
+            <div class="icon">📊</div>
+            <h2>AI Usage Dashboard</h2>
+            <p>Track token consumption, model usage, and execution history at a glance. Stay on top of your AI spend.</p>
+            <span class="tag">New</span>
+        </a>
         <a href="toolkit.html" class="card">
             <div class="icon">🛠️</div>
             <h2>PD Toolkit</h2>
-            <p>Interactive decision tools — Stage-Gate Checker, FMEA Calculator, Make vs Buy Matrix, and Cycle Time Estimator for product leaders.</p>
+            <p>Interactive decision tools — Stage-Gate Checker, FMEA Calculator, Make vs Buy Matrix, and Cycle Time Estimator.</p>
             <span class="tag">Most Popular</span>
         </a>
         <a href="newsletter.html" class="card">
@@ -164,7 +200,7 @@
     </div>
 
     <div class="footer">
-        <p>© 2026 Sinkrest Lab · <a href="https://github.com/sinkrest/lab">GitHub</a> · Built for people who build things.</p>
+        <p>© 2026 Roman Martins · <a href="https://github.com/sinkrest/lab">GitHub</a> · Built for people who build things.</p>
     </div>
 
 </body>
