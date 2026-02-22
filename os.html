@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roman-OS</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #0a0a0f;
+            --surface: #12121a;
+            --surface2: #1a1a26;
+            --border: #2a2a3a;
+            --border-glow: #d4a843;
+            --accent: #d4a843;
+            --accent2: #43d4a8;
+            --accent3: #a843d4;
+            --text: #e0e0e0;
+            --text-dim: #777;
+            --danger: #e74c3c;
+            --success: #2ecc71;
+            --warning: #f39c12;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* === DESKTOP === */
+        #desktop {
+            position: relative;
+            width: 100%;
+            height: calc(100vh - 48px);
+            background: 
+                radial-gradient(ellipse at 20% 50%, rgba(212,168,67,0.03) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 50%, rgba(67,212,168,0.03) 0%, transparent 50%),
+                var(--bg);
+            overflow: hidden;
+        }
+
+        /* === TASKBAR === */
+        #taskbar {
+            height: 48px;
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            gap: 4px;
+        }
+
+        .taskbar-btn {
+            padding: 6px 16px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-dim);
+            font-size: 13px;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .taskbar-btn:hover { background: #22223a; color: var(--text); }
+        .taskbar-btn.active { background: #1e1e30; border-color: var(--accent); color: var(--accent); }
+
+        .taskbar-start {
+            background: linear-gradient(135deg, var(--accent), #b8912e);
+            color: #000;
+            font-weight: 700;
+            border: none;
+            margin-right: 8px;
+        }
+
+        .taskbar-start:hover { opacity: 0.9; color: #000; }
+
+        .taskbar-clock {
+            margin-left: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            color: var(--text-dim);
+        }
+
+        /* === WINDOW === */
+        .os-window {
+            position: absolute;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 1px rgba(212,168,67,0.3);
+            display: flex;
+            flex-direction: column;
+            min-width: 320px;
+            min-height: 200px;
+            overflow: hidden;
+            transition: box-shadow 0.2s;
+        }
+
+        .os-window.focused {
+            box-shadow: 0 20px 80px rgba(0,0,0,0.6), 0 0 2px rgba(212,168,67,0.5);
+            border-color: rgba(212,168,67,0.3);
+        }
+
+        .os-window.minimized { display: none; }
+
+        .os-window.maximized {
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            border-radius: 0;
+        }
+
+        .window-titlebar {
+            height: 40px;
+            background: var(--surface2);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            cursor: grab;
+            flex-shrink: 0;
+        }
+
+        .window-titlebar:active { cursor: grabbing; }
+
+        .window-dots {
+            display: flex;
+            gap: 7px;
+            margin-right: 12px;
+        }
+
+        .window-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .window-dot:hover { opacity: 0.8; }
+        .dot-close { background: var(--danger); }
+        .dot-minimize { background: var(--warning); }
+        .dot-maximize { background: var(--success); }
+
+        .window-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .window-title .icon { font-size: 16px; }
+
+        .window-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .window-body::-webkit-scrollbar { width: 6px; }
+        .window-body::-webkit-scrollbar-track { background: transparent; }
+        .window-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+        /* Resize handle */
+        .resize-handle {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 16px;
+            height: 16px;
+            cursor: nwse-resize;
+        }
+
+        .resize-handle::after {
+            content: '';
+            position: absolute;
+            bottom: 4px;
+            right: 4px;
+            width: 8px;
+            height: 8px;
+            border-right: 2px solid var(--border);
+            border-bottom: 2px solid var(--border);
+        }
+
+        /* === TASKS APP === */
+        .tasks-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .tasks-header h2 {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--accent);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .task-count {
+            background: var(--accent);
+            color: #000;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        .tasks-filters {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 16px;
+        }
+
+        .filter-btn {
+            padding: 5px 12px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-dim);
+            font-size: 12px;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .filter-btn:hover { color: var(--text); border-color: #444; }
+        .filter-btn.active { color: var(--accent); border-color: var(--accent); background: rgba(212,168,67,0.1); }
+
+        .task-add-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .task-add-bar input {
+            flex: 1;
+            padding: 10px 14px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .task-add-bar input:focus { border-color: var(--accent); }
+        .task-add-bar input::placeholder { color: var(--text-dim); }
+
+        .task-add-bar select {
+            padding: 10px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .task-add-btn {
+            padding: 10px 18px;
+            background: linear-gradient(135deg, var(--accent), #b8912e);
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .task-add-btn:hover { opacity: 0.85; }
+
+        .task-list { display: flex; flex-direction: column; gap: 8px; }
+
+        .task-item {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.2s;
+            cursor: default;
+        }
+
+        .task-item:hover { border-color: #3a3a4a; }
+
+        .task-checkbox {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.2s;
+        }
+
+        .task-checkbox:hover { border-color: var(--accent); }
+
+        .task-checkbox.checked {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .task-checkbox.checked::after {
+            content: '✓';
+            color: #000;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .task-content { flex: 1; }
+
+        .task-title {
+            font-size: 14px;
+            font-weight: 500;
+            line-height: 1.3;
+        }
+
+        .task-item.done .task-title {
+            text-decoration: line-through;
+            color: var(--text-dim);
+        }
+
+        .task-meta {
+            display: flex;
+            gap: 8px;
+            margin-top: 4px;
+        }
+
+        .task-tag {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .tag-high { background: rgba(231,76,60,0.15); color: #e74c3c; }
+        .tag-medium { background: rgba(243,156,18,0.15); color: #f39c12; }
+        .tag-low { background: rgba(46,204,113,0.15); color: #2ecc71; }
+
+        .task-date {
+            font-size: 11px;
+            color: var(--text-dim);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .task-delete {
+            color: var(--text-dim);
+            cursor: pointer;
+            font-size: 16px;
+            padding: 4px;
+            border-radius: 4px;
+            transition: all 0.15s;
+            opacity: 0;
+        }
+
+        .task-item:hover .task-delete { opacity: 1; }
+        .task-delete:hover { color: var(--danger); background: rgba(231,76,60,0.1); }
+
+        /* === START MENU === */
+        #startMenu {
+            display: none;
+            position: absolute;
+            bottom: 56px;
+            left: 12px;
+            width: 280px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+            padding: 8px;
+            z-index: 9999;
+        }
+
+        #startMenu.open { display: block; }
+
+        .start-item {
+            padding: 10px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            transition: background 0.15s;
+        }
+
+        .start-item:hover { background: var(--surface2); }
+        .start-item .si-icon { font-size: 20px; }
+        .start-item .si-label { font-weight: 500; }
+        .start-item .si-desc { font-size: 11px; color: var(--text-dim); }
+
+        .start-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 6px 0;
+        }
+
+        /* === EMPTY STATE === */
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-dim);
+        }
+
+        .empty-state .emoji { font-size: 3rem; margin-bottom: 1rem; }
+        .empty-state p { font-size: 14px; }
+    </style>
+</head>
+<body>
+
+<div id="desktop"></div>
+
+<div id="startMenu">
+    <div class="start-item" onclick="openApp('tasks')">
+        <span class="si-icon">📋</span>
+        <div>
+            <div class="si-label">Tasks</div>
+            <div class="si-desc">Manage your to-do list</div>
+        </div>
+    </div>
+    <div class="start-item" onclick="openApp('notes')" style="opacity:0.4">
+        <span class="si-icon">📝</span>
+        <div>
+            <div class="si-label">Notes</div>
+            <div class="si-desc">Coming soon</div>
+        </div>
+    </div>
+    <div class="start-item" onclick="openApp('terminal')" style="opacity:0.4">
+        <span class="si-icon">⚡</span>
+        <div>
+            <div class="si-label">Terminal</div>
+            <div class="si-desc">Coming soon</div>
+        </div>
+    </div>
+    <div class="start-divider"></div>
+    <div class="start-item" onclick="openApp('settings')" style="opacity:0.4">
+        <span class="si-icon">⚙️</span>
+        <div>
+            <div class="si-label">Settings</div>
+            <div class="si-desc">Coming soon</div>
+        </div>
+    </div>
+</div>
+
+<div id="taskbar">
+    <div class="taskbar-btn taskbar-start" onclick="toggleStartMenu()">⬡ Roman-OS</div>
+    <div id="taskbarItems"></div>
+    <div class="taskbar-clock" id="clock"></div>
+</div>
+
+<script>
+// === Window Manager ===
+let windows = {};
+let windowOrder = [];
+let topZ = 10;
+let dragState = null;
+let resizeState = null;
+
+// === Task Data (localStorage) ===
+function loadTasks() {
+    try { return JSON.parse(localStorage.getItem('roman-os-tasks')) || []; }
+    catch { return []; }
+}
+
+function saveTasks(tasks) {
+    localStorage.setItem('roman-os-tasks', JSON.stringify(tasks));
+}
+
+// Seed demo tasks if empty
+if (loadTasks().length === 0) {
+    saveTasks([
+        { id: 1, title: 'Design portfolio layout', priority: 'high', done: false, created: '2026-02-20' },
+        { id: 2, title: 'Research AI product tools', priority: 'medium', done: false, created: '2026-02-21' },
+        { id: 3, title: 'Update GitHub Pages site', priority: 'low', done: true, created: '2026-02-19' },
+        { id: 4, title: 'Write project documentation', priority: 'medium', done: false, created: '2026-02-22' },
+        { id: 5, title: 'Set up CI/CD pipeline', priority: 'high', done: false, created: '2026-02-22' },
+    ]);
+}
+
+// === Create Window ===
+function createWindow(id, title, icon, content, opts = {}) {
+    if (windows[id]) { focusWindow(id); return; }
+
+    const w = opts.width || 600;
+    const h = opts.height || 500;
+    const desktop = document.getElementById('desktop');
+    const x = Math.min(80 + Object.keys(windows).length * 30, desktop.offsetWidth - w - 20);
+    const y = Math.min(60 + Object.keys(windows).length * 30, desktop.offsetHeight - h - 20);
+
+    const el = document.createElement('div');
+    el.className = 'os-window focused';
+    el.id = 'win-' + id;
+    el.style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${h}px;z-index:${++topZ}`;
+
+    el.innerHTML = `
+        <div class="window-titlebar" onmousedown="startDrag(event,'${id}')">
+            <div class="window-dots">
+                <div class="window-dot dot-close" onclick="closeWindow('${id}')"></div>
+                <div class="window-dot dot-minimize" onclick="minimizeWindow('${id}')"></div>
+                <div class="window-dot dot-maximize" onclick="maximizeWindow('${id}')"></div>
+            </div>
+            <div class="window-title"><span class="icon">${icon}</span>${title}</div>
+        </div>
+        <div class="window-body">${content}</div>
+        <div class="resize-handle" onmousedown="startResize(event,'${id}')"></div>
+    `;
+
+    el.addEventListener('mousedown', () => focusWindow(id));
+    desktop.appendChild(el);
+
+    windows[id] = { el, title, icon, minimized: false, maximized: false };
+    windowOrder.push(id);
+    updateTaskbar();
+    focusWindow(id);
+}
+
+function focusWindow(id) {
+    if (!windows[id]) return;
+    Object.values(windows).forEach(w => w.el.classList.remove('focused'));
+    windows[id].el.style.zIndex = ++topZ;
+    windows[id].el.classList.add('focused');
+    if (windows[id].minimized) {
+        windows[id].minimized = false;
+        windows[id].el.classList.remove('minimized');
+    }
+    updateTaskbar();
+}
+
+function closeWindow(id) {
+    if (!windows[id]) return;
+    windows[id].el.remove();
+    delete windows[id];
+    windowOrder = windowOrder.filter(w => w !== id);
+    updateTaskbar();
+    toggleStartMenu(true);
+}
+
+function minimizeWindow(id) {
+    if (!windows[id]) return;
+    windows[id].minimized = true;
+    windows[id].el.classList.add('minimized');
+    updateTaskbar();
+}
+
+function maximizeWindow(id) {
+    if (!windows[id]) return;
+    windows[id].maximized = !windows[id].maximized;
+    windows[id].el.classList.toggle('maximized');
+}
+
+// === Drag ===
+function startDrag(e, id) {
+    if (e.target.classList.contains('window-dot')) return;
+    if (windows[id].maximized) return;
+    const rect = windows[id].el.getBoundingClientRect();
+    dragState = { id, offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top };
+    focusWindow(id);
+}
+
+// === Resize ===
+function startResize(e, id) {
+    e.stopPropagation();
+    const rect = windows[id].el.getBoundingClientRect();
+    resizeState = { id, startX: e.clientX, startY: e.clientY, startW: rect.width, startH: rect.height };
+    focusWindow(id);
+}
+
+document.addEventListener('mousemove', (e) => {
+    if (dragState) {
+        const el = windows[dragState.id]?.el;
+        if (!el) return;
+        el.style.left = (e.clientX - dragState.offsetX) + 'px';
+        el.style.top = (e.clientY - dragState.offsetY) + 'px';
+    }
+    if (resizeState) {
+        const el = windows[resizeState.id]?.el;
+        if (!el) return;
+        const newW = Math.max(320, resizeState.startW + (e.clientX - resizeState.startX));
+        const newH = Math.max(200, resizeState.startH + (e.clientY - resizeState.startY));
+        el.style.width = newW + 'px';
+        el.style.height = newH + 'px';
+    }
+});
+
+document.addEventListener('mouseup', () => { dragState = null; resizeState = null; });
+
+// === Taskbar ===
+function updateTaskbar() {
+    const container = document.getElementById('taskbarItems');
+    container.innerHTML = '';
+    windowOrder.forEach(id => {
+        if (!windows[id]) return;
+        const btn = document.createElement('div');
+        btn.className = 'taskbar-btn' + (windows[id].el.classList.contains('focused') && !windows[id].minimized ? ' active' : '');
+        btn.innerHTML = `${windows[id].icon} ${windows[id].title}`;
+        btn.onclick = () => {
+            if (windows[id].minimized) focusWindow(id);
+            else if (windows[id].el.classList.contains('focused')) minimizeWindow(id);
+            else focusWindow(id);
+        };
+        container.appendChild(btn);
+    });
+}
+
+// === Start Menu ===
+function toggleStartMenu(forceClose) {
+    const m = document.getElementById('startMenu');
+    if (forceClose) { m.classList.remove('open'); return; }
+    m.classList.toggle('open');
+}
+
+document.getElementById('desktop').addEventListener('click', () => toggleStartMenu(true));
+
+// === Clock ===
+function updateClock() {
+    const now = new Date();
+    document.getElementById('clock').textContent = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + '  •  ' + now.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// === Apps ===
+function openApp(name) {
+    toggleStartMenu(true);
+    if (name === 'tasks') openTasks();
+}
+
+function openTasks() {
+    const content = `
+        <div id="tasksApp">
+            <div class="tasks-header">
+                <h2>📋 Tasks</h2>
+                <span class="task-count" id="taskCount">0</span>
+            </div>
+            <div class="tasks-filters">
+                <div class="filter-btn active" onclick="filterTasks('all', this)">All</div>
+                <div class="filter-btn" onclick="filterTasks('active', this)">Active</div>
+                <div class="filter-btn" onclick="filterTasks('done', this)">Done</div>
+                <div class="filter-btn" onclick="filterTasks('high', this)">🔴 High</div>
+            </div>
+            <div class="task-add-bar">
+                <input type="text" id="taskInput" placeholder="Add a new task..." onkeydown="if(event.key==='Enter')addTask()">
+                <select id="taskPriority">
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="low">Low</option>
+                </select>
+                <button class="task-add-btn" onclick="addTask()">+ Add</button>
+            </div>
+            <div class="task-list" id="taskList"></div>
+        </div>
+    `;
+    createWindow('tasks', 'Tasks', '📋', content, { width: 650, height: 520 });
+    renderTasks();
+}
+
+let currentFilter = 'all';
+
+function filterTasks(filter, btn) {
+    currentFilter = filter;
+    document.querySelectorAll('.tasks-filters .filter-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    renderTasks();
+}
+
+function renderTasks() {
+    const list = document.getElementById('taskList');
+    if (!list) return;
+    let tasks = loadTasks();
+
+    if (currentFilter === 'active') tasks = tasks.filter(t => !t.done);
+    else if (currentFilter === 'done') tasks = tasks.filter(t => t.done);
+    else if (currentFilter === 'high') tasks = tasks.filter(t => t.priority === 'high' && !t.done);
+
+    const allTasks = loadTasks();
+    document.getElementById('taskCount').textContent = allTasks.filter(t => !t.done).length;
+
+    if (tasks.length === 0) {
+        list.innerHTML = '<div class="empty-state"><div class="emoji">✨</div><p>No tasks here. Add one above!</p></div>';
+        return;
+    }
+
+    // Sort: undone first, then by priority
+    const prio = { high: 0, medium: 1, low: 2 };
+    tasks.sort((a, b) => a.done - b.done || prio[a.priority] - prio[b.priority]);
+
+    list.innerHTML = tasks.map(t => `
+        <div class="task-item ${t.done ? 'done' : ''}">
+            <div class="task-checkbox ${t.done ? 'checked' : ''}" onclick="toggleTask(${t.id})"></div>
+            <div class="task-content">
+                <div class="task-title">${escHtml(t.title)}</div>
+                <div class="task-meta">
+                    <span class="task-tag tag-${t.priority}">${t.priority}</span>
+                    <span class="task-date">${t.created}</span>
+                </div>
+            </div>
+            <div class="task-delete" onclick="deleteTask(${t.id})">✕</div>
+        </div>
+    `).join('');
+}
+
+function addTask() {
+    const input = document.getElementById('taskInput');
+    const priority = document.getElementById('taskPriority');
+    const title = input.value.trim();
+    if (!title) return;
+
+    const tasks = loadTasks();
+    const id = Date.now();
+    const today = new Date().toISOString().split('T')[0];
+    tasks.push({ id, title, priority: priority.value, done: false, created: today });
+    saveTasks(tasks);
+    input.value = '';
+    renderTasks();
+}
+
+function toggleTask(id) {
+    const tasks = loadTasks();
+    const t = tasks.find(t => t.id === id);
+    if (t) t.done = !t.done;
+    saveTasks(tasks);
+    renderTasks();
+}
+
+function deleteTask(id) {
+    saveTasks(loadTasks().filter(t => t.id !== id));
+    renderTasks();
+}
+
+function escHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+}
+
+// Auto-open Tasks on load
+openTasks();
+</script>
+
+</body>
+</html>
