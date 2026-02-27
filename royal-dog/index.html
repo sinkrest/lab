@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Royal Dog Portrait Generator</title>
+<style>
+body { font-family: sans-serif; max-width: 500px; margin: 2rem auto; text-align: center; }
+#result img { max-width: 100%; margin: 1rem 0; }
+#download { margin-top: 1rem; }
+</style>
+</head>
+<body>
+<h1>Royal Dog Portrait Generator</h1>
+<input type="file" id="dogInput" accept="image/*"><br><br>
+<img id="preview" style="display:none; max-width:90%;" alt="Your Dog"/>
+<br>
+<button id="generate" disabled>Generate Portrait</button>
+<div id="result"></div>
+<button id="download" style="display:none;">Download Portrait</button>
+<script>
+let samplePortrait = "https://images.unsplash.com/photo-1518717758536-85ae29035b6d?auto=format&fit=facearea&w=500&h=600&facepad=3"; // Unsplash placeholder
+let selectedFile;
+document.getElementById('dogInput').onchange = (e) => {
+  const file = e.target.files[0];
+  selectedFile = file;
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      document.getElementById('preview').src = evt.target.result;
+      document.getElementById('preview').style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+    document.getElementById('generate').disabled = false;
+  }
+};
+document.getElementById('generate').onclick = () => {
+  document.getElementById('result').innerHTML = `<img src="${samplePortrait}" id="portrait" alt="Royal Dog Portrait">`;
+  document.getElementById('download').style.display = 'inline-block';
+};
+document.getElementById('download').onclick = () => {
+  const image = document.getElementById('portrait');
+  const a = document.createElement('a');
+  a.href = image.src;
+  a.download = 'royal-dog-portrait.png';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+};
+</script>
+</body>
+</html>
