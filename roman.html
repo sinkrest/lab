@@ -27,7 +27,8 @@
     body {
         font-family: 'Inter', -apple-system, system-ui, sans-serif;
         background: var(--bg); color: var(--ink);
-        overflow-x: hidden;
+        /* clip, not hidden: overflow-x:hidden on body breaks position:sticky in Safari */
+        overflow-x: hidden; overflow-x: clip;
         -webkit-font-smoothing: antialiased;
     }
     ::selection { background: rgba(99,102,241,0.35); color: #fff; }
@@ -158,7 +159,8 @@
     }
     .station .card {
         background: rgba(15,15,26,0.8); border: 1px solid var(--border);
-        backdrop-filter: blur(12px); border-radius: 16px; padding: 1.6rem;
+        -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+        border-radius: 16px; padding: 1.6rem;
     }
     .station .period { font-family: var(--mono); font-size: .7rem; color: var(--faint); letter-spacing: .08em; }
     .station h3 { font-size: 1.15rem; font-weight: 700; color: #fff; margin: .5rem 0 .15rem; }
@@ -204,7 +206,8 @@
     .proj {
         flex: 0 0 min(82vw, 440px); border-radius: 18px; padding: 1.8rem;
         background: rgba(15,15,26,0.8); border: 1px solid var(--border);
-        backdrop-filter: blur(12px); display: flex; flex-direction: column; position: relative; overflow: hidden;
+        -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+        display: flex; flex-direction: column; position: relative; overflow: hidden;
     }
     .proj::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--stripe, var(--ai)); }
     .proj .icon { font-size: 1.9rem; margin-bottom: 1rem; }
@@ -285,16 +288,29 @@
     }
     .footer .mono { font-family: var(--mono); }
 
-    @media (prefers-reduced-motion: reduce) {
-        .scene { height: auto !important; }
-        .scene .pin { position: static; height: auto; min-height: 60vh; overflow: visible; }
-        .belt-track, .work-track { overflow-x: auto; padding-bottom: 1rem; }
-        .fly, .numbers-close { position: static; opacity: 1 !important; margin: 2rem auto; }
-        #numbers .pin { flex-direction: column; }
-        .how-card { opacity: 1; transform: none; }
-        [class*="hero"], .badge, .ctas, .typer { animation: none !important; }
-        .bridge-line { opacity: 1 !important; }
+    /* Reduced-motion styling is class-driven (JS adds .reduced when the OS asks
+       for it) so the on-page "Enable motion" button can genuinely undo it —
+       a media query can't be toggled off. */
+    html.reduced .scene { height: auto !important; }
+    html.reduced .scene .pin { position: static; height: auto; min-height: 60vh; overflow: visible; }
+    html.reduced .belt-track, html.reduced .work-track { overflow-x: auto; padding-bottom: 1rem; }
+    html.reduced .fly, html.reduced .numbers-close { position: static; opacity: 1 !important; margin: 2rem auto; }
+    html.reduced #numbers .pin { flex-direction: column; }
+    html.reduced .how-card { opacity: 1; transform: none; }
+    html.reduced .hero-inner, html.reduced .badge, html.reduced .ctas, html.reduced .typer,
+    html.reduced .hero-hint, html.reduced .ltr { animation: none !important; }
+    html.reduced .bridge-line { opacity: 1 !important; }
+
+    .motion-toggle {
+        position: fixed; bottom: 1.2rem; right: 1.2rem; z-index: 70;
+        font: 600 .78rem 'Inter', -apple-system, system-ui, sans-serif;
+        letter-spacing: .04em; color: #a5b4fc; cursor: pointer;
+        background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.45);
+        border-radius: 999px; padding: .65rem 1.1rem;
+        -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+        transition: background .2s, color .2s;
     }
+    .motion-toggle:hover { background: rgba(99,102,241,0.3); color: #fff; }
 </style>
 </head>
 <body>
@@ -549,7 +565,11 @@
 (function () {
     'use strict';
     var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduceMotion) document.documentElement.classList.add('reduced');
     var $ = function (id) { return document.getElementById(id); };
+    // window.scrollY can read 0 when a host embeds the page in its own scroll
+    // container; scrollingElement is the reliable source in both cases
+    var scroller = document.scrollingElement || document.documentElement;
 
     /* ---------- hero: assemble the name letter by letter ---------- */
     ['nameFirst', 'nameLast'].forEach(function (id, wordIdx) {
@@ -668,20 +688,13 @@
         io.observe(el);
     });
 
-    if (reduceMotion) return;
-
-    var mouseX = 0, mouseY = 0;
-    window.addEventListener('mousemove', function (e) {
-        mouseX = (e.clientX / window.innerWidth - 0.5) * 2;
-        mouseY = (e.clientY / window.innerHeight - 0.5) * 2;
-    }, { passive: true });
-    window.addEventListener('resize', function () { vh = window.innerHeight; }, { passive: true });
+    var mouseX = 0, mouseY = 0, motionStarted = false;
 
     /* ---------- single rAF loop, lerp-smoothed scroll ---------- */
-    var smoothY = window.scrollY, lastBridgeStage = -1, lastChapter = -1;
+    var smoothY = 0, lastBridgeStage = -1, lastChapter = -1;
 
     function frame(now) {
-        var targetY = window.scrollY;
+        var targetY = scroller.scrollTop;
         smoothY += (targetY - smoothY) * 0.1;
         if (Math.abs(targetY - smoothY) < 0.1) smoothY = targetY;
         var docH = document.documentElement.scrollHeight - vh;
@@ -748,7 +761,35 @@
 
         requestAnimationFrame(frame);
     }
-    requestAnimationFrame(frame);
+
+    function startMotion() {
+        if (motionStarted) return;
+        motionStarted = true;
+        window.addEventListener('mousemove', function (e) {
+            mouseX = (e.clientX / window.innerWidth - 0.5) * 2;
+            mouseY = (e.clientY / window.innerHeight - 0.5) * 2;
+        }, { passive: true });
+        window.addEventListener('resize', function () { vh = window.innerHeight; }, { passive: true });
+        smoothY = scroller.scrollTop;
+        requestAnimationFrame(frame);
+    }
+
+    if (!reduceMotion) {
+        startMotion();
+    } else {
+        // OS asked for reduced motion: page stays static, but offer a way in
+        var btn = document.createElement('button');
+        btn.className = 'motion-toggle';
+        btn.textContent = '▶ Enable motion';
+        btn.addEventListener('click', function () {
+            document.documentElement.classList.remove('reduced');
+            btn.remove();
+            typerEl.textContent = ''; charIdx = 0; deleting = false;
+            setTimeout(tickType, 300);
+            startMotion();
+        });
+        document.body.appendChild(btn);
+    }
 })();
 </script>
 </body>

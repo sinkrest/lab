@@ -12,7 +12,8 @@
         font-family: 'Inter', sans-serif;
         background: #0b1628;
         color: #e4eaf4;
-        overflow-x: hidden;
+        /* clip, not hidden: overflow-x:hidden on body breaks position:sticky in Safari */
+        overflow-x: hidden; overflow-x: clip;
     }
 
     /* ---------- fixed chrome ---------- */
@@ -207,14 +208,25 @@
     }
     .footer a { color: #27c0e7; text-decoration: none; }
 
-    /* Respect users who ask for less motion: collapse pinned scenes
-       and let the JS loop stay off. */
-    @media (prefers-reduced-motion: reduce) {
-        .scene { height: auto !important; }
-        .scene .pin { position: static; height: auto; min-height: 100vh; }
-        .hero-title .ltr, .hero-kicker, .hero-sub { animation: none; }
-        .hero-hint { animation: none; }
+    /* Respect users who ask for less motion: collapse pinned scenes and keep
+       the JS loop off. Class-driven (JS adds .reduced when the OS asks) so the
+       on-page "Enable motion" button can undo it. */
+    html.reduced .scene { height: auto !important; }
+    html.reduced .scene .pin { position: static; height: auto; min-height: 100vh; }
+    html.reduced .track { overflow-x: auto; }
+    html.reduced .hero-title .ltr, html.reduced .hero-kicker, html.reduced .hero-sub,
+    html.reduced .hero-hint { animation: none; }
+
+    .motion-toggle {
+        position: fixed; bottom: 1.2rem; right: 1.2rem; z-index: 70;
+        font: 600 .78rem 'Inter', -apple-system, system-ui, sans-serif;
+        letter-spacing: .04em; color: #7fd8ef; cursor: pointer;
+        background: rgba(39,192,231,0.12); border: 1px solid rgba(39,192,231,0.45);
+        border-radius: 999px; padding: .65rem 1.1rem;
+        -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+        transition: background .2s, color .2s;
     }
+    .motion-toggle:hover { background: rgba(39,192,231,0.25); color: #fff; }
 </style>
 </head>
 <body>
@@ -331,6 +343,10 @@
 (function () {
     'use strict';
     var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduceMotion) document.documentElement.classList.add('reduced');
+    // window.scrollY can read 0 when a host embeds the page in its own scroll
+    // container; scrollingElement is the reliable source in both cases
+    var scroller = document.scrollingElement || document.documentElement;
 
     /* ---------- hero setup: split title into letters, spawn orbs ---------- */
     var title = document.getElementById('heroTitle');
@@ -415,24 +431,18 @@
         gallerySec = $('gallery'), track = $('track');
 
     morphPath.setAttribute('d', toPath(SHAPES[0]));
-    if (reduceMotion) return; // static page for users who opted out of motion
 
-    var mouseX = 0, mouseY = 0;
-    window.addEventListener('mousemove', function (e) {
-        mouseX = (e.clientX / window.innerWidth - 0.5) * 2;   // -1 .. 1
-        mouseY = (e.clientY / window.innerHeight - 0.5) * 2;
-    }, { passive: true });
-    window.addEventListener('resize', function () { vh = window.innerHeight; }, { passive: true });
+    var mouseX = 0, mouseY = 0, motionStarted = false;
 
     /* ---------- the single rAF loop ----------
        One loop reads a lerp-smoothed scroll value and writes transforms.
        Reads and writes are batched; nothing here triggers layout per-frame
        except the cached offsetTop lookups. */
-    var smoothY = window.scrollY;
+    var smoothY = 0;
     var docH = 0, lastMorphLabel = -1;
 
     function frame(now) {
-        var targetY = window.scrollY;
+        var targetY = scroller.scrollTop;
         smoothY += (targetY - smoothY) * 0.1;                 // the "buttery" lag
         if (Math.abs(targetY - smoothY) < 0.1) smoothY = targetY;
         docH = document.documentElement.scrollHeight - vh;
@@ -495,7 +505,33 @@
 
         requestAnimationFrame(frame);
     }
-    requestAnimationFrame(frame);
+
+    function startMotion() {
+        if (motionStarted) return;
+        motionStarted = true;
+        window.addEventListener('mousemove', function (e) {
+            mouseX = (e.clientX / window.innerWidth - 0.5) * 2;   // -1 .. 1
+            mouseY = (e.clientY / window.innerHeight - 0.5) * 2;
+        }, { passive: true });
+        window.addEventListener('resize', function () { vh = window.innerHeight; }, { passive: true });
+        smoothY = scroller.scrollTop;
+        requestAnimationFrame(frame);
+    }
+
+    if (!reduceMotion) {
+        startMotion();
+    } else {
+        // OS asked for reduced motion: page stays static, but offer a way in
+        var btn = document.createElement('button');
+        btn.className = 'motion-toggle';
+        btn.textContent = '▶ Enable motion';
+        btn.addEventListener('click', function () {
+            document.documentElement.classList.remove('reduced');
+            btn.remove();
+            startMotion();
+        });
+        document.body.appendChild(btn);
+    }
 })();
 </script>
 </body>
