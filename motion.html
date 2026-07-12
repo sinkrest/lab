@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scroll Motion Lab</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: auto; }
+    body {
+        font-family: 'Inter', sans-serif;
+        background: #0b1628;
+        color: #e4eaf4;
+        overflow-x: hidden;
+    }
+
+    /* ---------- fixed chrome ---------- */
+    .progress {
+        position: fixed; top: 0; left: 0; height: 3px; width: 100%;
+        background: linear-gradient(90deg, #27c0e7, #7b5cff, #ff5c8a);
+        transform-origin: left center;
+        transform: scaleX(0);
+        z-index: 50;
+    }
+    .home-link {
+        position: fixed; top: 1rem; left: 1rem; z-index: 50;
+        background: rgba(11,22,40,0.6); backdrop-filter: blur(8px);
+        border: 1px solid rgba(255,255,255,0.12);
+        color: #8a9dba; text-decoration: none;
+        font-size: .8rem; font-weight: 600;
+        padding: .45rem 1rem; border-radius: 8px;
+        transition: color .2s, border-color .2s;
+    }
+    .home-link:hover { color: #27c0e7; border-color: rgba(39,192,231,0.5); }
+
+    /* ---------- hero: multi-layer parallax ---------- */
+    .hero {
+        height: 100vh;
+        position: relative;
+        overflow: hidden;
+        display: flex; align-items: center; justify-content: center;
+        background: radial-gradient(ellipse at 50% 120%, #1a3a6b 0%, #0b1628 60%);
+    }
+    .orb {
+        position: absolute; border-radius: 50%;
+        filter: blur(2px);
+        will-change: transform;
+    }
+    .hero-content { text-align: center; position: relative; z-index: 2; will-change: transform, opacity; }
+    .hero-kicker {
+        color: #27c0e7; font-size: .8rem; font-weight: 700;
+        letter-spacing: .35em; text-transform: uppercase;
+        margin-bottom: 1rem;
+        animation: rise .9s ease .1s both;
+    }
+    .hero-title {
+        font-size: clamp(3.5rem, 14vw, 10rem);
+        font-weight: 900; line-height: .95; color: #fff;
+        letter-spacing: -.02em;
+    }
+    .hero-title .ltr {
+        display: inline-block;
+        animation: rise .8s cubic-bezier(.2,.8,.2,1) both;
+        background: linear-gradient(180deg, #fff 30%, #27c0e7 130%);
+        -webkit-background-clip: text; background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    .hero-sub { color: #94a7c8; margin-top: 1.4rem; font-size: 1.05rem; animation: rise .9s ease .5s both; }
+    .hero-hint {
+        position: absolute; bottom: 2rem; left: 50%; transform: translateX(-50%);
+        color: #5d7da3; font-size: .78rem; letter-spacing: .2em; text-transform: uppercase;
+        animation: bob 2s ease-in-out infinite;
+    }
+    @keyframes rise { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: none; } }
+    @keyframes bob { 0%,100% { transform: translate(-50%,0); } 50% { transform: translate(-50%,10px); } }
+
+    /* ---------- pinned scenes ----------
+       The core trick: a TALL section (300–400vh) whose inner .pin is
+       position:sticky at top:0 with height:100vh. While you scroll
+       through the tall section the pin stays glued to the viewport,
+       and JS maps "how far through the section" -> animation progress. */
+    .scene { position: relative; }
+    .scene .pin {
+        position: sticky; top: 0; height: 100vh;
+        overflow: hidden;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .caption {
+        position: absolute; bottom: 1.6rem; left: 1.6rem;
+        font-size: .75rem; font-weight: 600; letter-spacing: .12em;
+        text-transform: uppercase; color: #5d7da3;
+        border-left: 2px solid #27c0e7; padding-left: .7rem;
+        max-width: 320px; line-height: 1.7;
+    }
+    .caption b { color: #27c0e7; display: block; }
+
+    /* scene 1: zoom through */
+    #zoom { height: 350vh; }
+    #zoom .pin { background: radial-gradient(ellipse at center, #132744 0%, #0b1628 70%); }
+    .portal {
+        width: min(46vmin, 380px); height: min(46vmin, 380px);
+        border-radius: 50%;
+        border: 3px solid rgba(39,192,231,0.9);
+        box-shadow: 0 0 60px rgba(39,192,231,0.35), inset 0 0 60px rgba(39,192,231,0.15);
+        position: absolute;
+        will-change: transform, opacity;
+    }
+    .portal.p2 { border-color: rgba(123,92,255,0.8); box-shadow: 0 0 60px rgba(123,92,255,0.3), inset 0 0 60px rgba(123,92,255,0.12); }
+    .portal.p3 { border-color: rgba(255,92,138,0.7); box-shadow: 0 0 60px rgba(255,92,138,0.25), inset 0 0 60px rgba(255,92,138,0.1); }
+    .zoom-word {
+        position: absolute; font-weight: 900; color: #fff;
+        font-size: clamp(2.5rem, 9vw, 7rem); letter-spacing: .02em;
+        will-change: transform, opacity;
+    }
+
+    /* scene 2: 3d cube */
+    #cube { height: 400vh; }
+    #cube .pin { background: linear-gradient(180deg, #0b1628, #101f3a); perspective: 900px; }
+    .cube {
+        width: 220px; height: 220px; position: relative;
+        transform-style: preserve-3d;
+        will-change: transform;
+    }
+    .face {
+        position: absolute; inset: 0;
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 800; font-size: 1.05rem; letter-spacing: .1em;
+        color: #cfe9f5;
+        background: rgba(39,192,231,0.07);
+        border: 1px solid rgba(39,192,231,0.55);
+        box-shadow: inset 0 0 40px rgba(39,192,231,0.12);
+        backface-visibility: visible;
+    }
+    .face.f1 { transform: translateZ(110px); }
+    .face.f2 { transform: rotateY(180deg) translateZ(110px); }
+    .face.f3 { transform: rotateY(90deg) translateZ(110px); }
+    .face.f4 { transform: rotateY(-90deg) translateZ(110px); }
+    .face.f5 { transform: rotateX(90deg) translateZ(110px); }
+    .face.f6 { transform: rotateX(-90deg) translateZ(110px); }
+    .cube-title {
+        position: absolute; top: 14%; width: 100%; text-align: center;
+        font-weight: 800; font-size: clamp(1.4rem, 4vw, 2.4rem); color: #fff;
+        will-change: transform, opacity;
+    }
+
+    /* scene 3: svg morph */
+    #morph { height: 400vh; }
+    #morph .pin { background: radial-gradient(ellipse at 50% 30%, #16213c 0%, #0b1628 70%); }
+    #morph svg { width: min(70vmin, 520px); height: min(70vmin, 520px); overflow: visible; }
+    #morphPath { will-change: d; }
+    .morph-label {
+        position: absolute; top: 12%; width: 100%; text-align: center;
+        font-weight: 800; font-size: clamp(1.3rem, 4vw, 2.2rem); color: #fff;
+        will-change: opacity;
+    }
+
+    /* scene 4: horizontal gallery */
+    #gallery { height: 350vh; }
+    #gallery .pin { background: #0b1628; justify-content: flex-start; }
+    .track {
+        display: flex; gap: 2rem; padding: 0 8vw;
+        will-change: transform;
+    }
+    .gcard {
+        flex: 0 0 min(70vw, 420px); height: 60vh;
+        border-radius: 18px; padding: 2rem;
+        display: flex; flex-direction: column; justify-content: flex-end;
+        border: 1px solid rgba(255,255,255,0.1);
+        background: linear-gradient(160deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+        position: relative; overflow: hidden;
+    }
+    .gcard::before {
+        content: attr(data-n);
+        position: absolute; top: 1rem; right: 1.4rem;
+        font-size: 5rem; font-weight: 900; opacity: .08; color: #fff;
+    }
+    .gcard h3 { font-size: 1.4rem; color: #fff; margin-bottom: .5rem; }
+    .gcard p { color: #8a9dba; font-size: .92rem; line-height: 1.6; }
+    .gcard .bar { position: absolute; top: 0; left: 0; right: 0; height: 4px; }
+    .gcard:nth-child(1) .bar { background: #27c0e7; }
+    .gcard:nth-child(2) .bar { background: #7b5cff; }
+    .gcard:nth-child(3) .bar { background: #ff5c8a; }
+    .gcard:nth-child(4) .bar { background: #ffb54d; }
+    .gcard:nth-child(5) .bar { background: #4dffa1; }
+
+    /* ---------- how it works ---------- */
+    .how { max-width: 960px; margin: 0 auto; padding: 6rem 1.5rem 4rem; }
+    .how h2 { font-size: 2rem; font-weight: 800; color: #fff; margin-bottom: .6rem; }
+    .how > p { color: #8a9dba; max-width: 620px; line-height: 1.7; margin-bottom: 2.5rem; }
+    .how-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.2rem; }
+    .how-card {
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 14px; padding: 1.5rem;
+    }
+    .how-card h3 { font-size: 1rem; color: #27c0e7; margin-bottom: .5rem; }
+    .how-card p { font-size: .88rem; color: #8a9dba; line-height: 1.65; }
+    .how-card code {
+        background: rgba(39,192,231,0.1); color: #7fd8ef;
+        padding: .1em .35em; border-radius: 4px;
+        font-size: .82em;
+    }
+    .footer {
+        text-align: center; padding: 2.5rem 1rem; color: #4a6080; font-size: .82rem;
+        border-top: 1px solid rgba(255,255,255,0.05);
+    }
+    .footer a { color: #27c0e7; text-decoration: none; }
+
+    /* Respect users who ask for less motion: collapse pinned scenes
+       and let the JS loop stay off. */
+    @media (prefers-reduced-motion: reduce) {
+        .scene { height: auto !important; }
+        .scene .pin { position: static; height: auto; min-height: 100vh; }
+        .hero-title .ltr, .hero-kicker, .hero-sub { animation: none; }
+        .hero-hint { animation: none; }
+    }
+</style>
+</head>
+<body>
+
+<div class="progress" id="progressBar"></div>
+<a class="home-link" href="index.html">← Hub</a>
+
+<!-- ============ HERO: layered parallax ============ -->
+<section class="hero" id="hero">
+    <div id="orbField"></div>
+    <div class="hero-content" id="heroContent">
+        <div class="hero-kicker">Scroll Motion Lab</div>
+        <h1 class="hero-title" id="heroTitle">MOTION</h1>
+        <p class="hero-sub">Parallax · zoom · 3D rotation · morphing — all driven by your scroll.</p>
+    </div>
+    <div class="hero-hint">Scroll ↓</div>
+</section>
+
+<!-- ============ SCENE 1: zoom through ============ -->
+<section class="scene" id="zoom">
+    <div class="pin">
+        <div class="portal p1" id="portal1"></div>
+        <div class="portal p2" id="portal2"></div>
+        <div class="portal p3" id="portal3"></div>
+        <div class="portal p1" id="portal4"></div>
+        <div class="portal p2" id="portal5"></div>
+        <div class="zoom-word" id="zoomWord">THROUGH</div>
+        <div class="caption"><b>Technique · Scroll-scrubbed zoom</b>
+            sticky pin + tall section → progress 0..1 → <span>scale()</span> from 0.15× to 9×</div>
+    </div>
+</section>
+
+<!-- ============ SCENE 2: 3D cube ============ -->
+<section class="scene" id="cube">
+    <div class="pin">
+        <div class="cube-title" id="cubeTitle">Real 3D — no WebGL needed</div>
+        <div class="cube" id="cubeEl">
+            <div class="face f1">TRANSFORM</div>
+            <div class="face f2">ROTATE</div>
+            <div class="face f3">SCALE</div>
+            <div class="face f4">TRANSLATE</div>
+            <div class="face f5">PERSPECTIVE</div>
+            <div class="face f6">PRESERVE-3D</div>
+        </div>
+        <div class="caption"><b>Technique · CSS 3D</b>
+            perspective on the parent, preserve-3d on the cube, rotateX/rotateY scrubbed by scroll</div>
+    </div>
+</section>
+
+<!-- ============ SCENE 3: morph ============ -->
+<section class="scene" id="morph">
+    <div class="pin">
+        <div class="morph-label" id="morphLabel">…becoming something else</div>
+        <svg viewBox="-130 -130 260 260" aria-hidden="true">
+            <defs>
+                <linearGradient id="morphGrad" x1="0" y1="0" x2="1" y2="1">
+                    <stop id="gradA" offset="0%" stop-color="#27c0e7"/>
+                    <stop id="gradB" offset="100%" stop-color="#7b5cff"/>
+                </linearGradient>
+            </defs>
+            <path id="morphPath" fill="url(#morphGrad)" opacity="0.9"/>
+        </svg>
+        <div class="caption"><b>Technique · Shape morphing</b>
+            one SVG path, N anchor points; scroll interpolates the points between blob → star → flower → circle</div>
+    </div>
+</section>
+
+<!-- ============ SCENE 4: horizontal gallery ============ -->
+<section class="scene" id="gallery">
+    <div class="pin">
+        <div class="track" id="track">
+            <div class="gcard" data-n="01"><div class="bar"></div><h3>Pin + progress</h3><p>A tall section with a sticky full-screen child. Vertical scroll becomes a 0→1 timeline you can map to anything.</p></div>
+            <div class="gcard" data-n="02"><div class="bar"></div><h3>Transform only</h3><p>Animate transform and opacity — they run on the GPU compositor and never trigger layout, so it stays at 60fps.</p></div>
+            <div class="gcard" data-n="03"><div class="bar"></div><h3>Lerp smoothing</h3><p>Instead of using raw scroll, chase it: value += (target − value) × 0.1. That lag is the “buttery” feel.</p></div>
+            <div class="gcard" data-n="04"><div class="bar"></div><h3>Easing curves</h3><p>Linear mapping feels robotic. Pipe progress through cubic ease-in-out and motion gets weight and intent.</p></div>
+            <div class="gcard" data-n="05"><div class="bar"></div><h3>Even this section</h3><p>Horizontal scroll from vertical input: the row is translateX’d by −progress × overflow while the pin holds still.</p></div>
+        </div>
+        <div class="caption"><b>Technique · Horizontal scrub</b>
+            vertical scroll drives translateX on an overflowing row</div>
+    </div>
+</section>
+
+<!-- ============ HOW IT WORKS ============ -->
+<section class="how">
+    <h2>How pages like this are built</h2>
+    <p>Everything you just scrolled through is ~300 lines of vanilla CSS + JS in this one file.
+       View source — every scene is commented. The same ideas power award-winning sites,
+       usually via the libraries below.</p>
+    <div class="how-grid">
+        <div class="how-card"><h3>1 · Scroll = timeline</h3>
+            <p>The whole genre is one idea: read scroll position, normalize it to a number between 0 and 1, and use that number to set <code>transform</code> values every frame via <code>requestAnimationFrame</code>.</p></div>
+        <div class="how-card"><h3>2 · Pinning</h3>
+            <p>Make a section 300–400vh tall and give it a <code>position: sticky</code> full-screen child. The visual holds still while the scrollbar keeps moving — that captured distance is your animation timeline.</p></div>
+        <div class="how-card"><h3>3 · GPU properties</h3>
+            <p>Only animate <code>transform</code> (translate/scale/rotate) and <code>opacity</code>. Animating width, top or margins forces layout every frame and stutters.</p></div>
+        <div class="how-card"><h3>4 · GSAP ScrollTrigger</h3>
+            <p>The industry workhorse. Pinning, scrubbing, snapping and timeline sequencing in a few lines — most Awwwards sites use it instead of hand-rolling the math.</p></div>
+        <div class="how-card"><h3>5 · Lenis / smooth scroll</h3>
+            <p>Libraries like Lenis replace the browser's stepped wheel scrolling with an interpolated one, so every scrubbed animation glides instead of ticking.</p></div>
+        <div class="how-card"><h3>6 · Three.js for true 3D</h3>
+            <p>The “3D imagery in motion” look — models that assemble, exploded products, camera fly-throughs — is WebGL via Three.js, with scroll driving the camera or a <code>THREE.AnimationMixer</code> timeline.</p></div>
+        <div class="how-card"><h3>7 · Morphing</h3>
+            <p>Shapes “becoming something else” = interpolating SVG path points (Flubber, GSAP MorphSVG) or blending WebGL shader uniforms between two geometries.</p></div>
+        <div class="how-card"><h3>8 · CSS-only future</h3>
+            <p>The new <code>animation-timeline: scroll()</code> / <code>view()</code> CSS API does scroll-scrubbed keyframes with zero JavaScript — already shipped in Chrome and Edge.</p></div>
+    </div>
+</section>
+
+<div class="footer">
+    <p>Scroll Motion Lab · <a href="index.html">Roman Martins Hub</a> · zero libraries, view source to learn</p>
+</div>
+
+<script>
+(function () {
+    'use strict';
+    var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    /* ---------- hero setup: split title into letters, spawn orbs ---------- */
+    var title = document.getElementById('heroTitle');
+    title.innerHTML = title.textContent.split('').map(function (ch, i) {
+        return '<span class="ltr" style="animation-delay:' + (0.15 + i * 0.07) + 's">' + ch + '</span>';
+    }).join('');
+
+    var orbField = document.getElementById('orbField');
+    var orbs = [];
+    var palette = ['39,192,231', '123,92,255', '255,92,138', '255,181,77'];
+    for (var i = 0; i < 14; i++) {
+        var el = document.createElement('div');
+        el.className = 'orb';
+        var size = 20 + Math.random() * 120;
+        var depth = 0.15 + Math.random() * 0.85;      // 0 = far/slow, 1 = near/fast
+        var c = palette[i % palette.length];
+        el.style.width = el.style.height = size + 'px';
+        el.style.left = (Math.random() * 100) + '%';
+        el.style.top = (Math.random() * 100) + '%';
+        el.style.background = 'radial-gradient(circle at 35% 35%, rgba(' + c + ',' + (0.25 * depth + 0.08) + '), transparent 70%)';
+        orbField.appendChild(el);
+        orbs.push({ el: el, depth: depth, seed: Math.random() * 1000 });
+    }
+
+    /* ---------- helpers ---------- */
+    function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
+    function lerp(a, b, t) { return a + (b - a) * t; }
+    function easeInOut(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+    // map progress p from [a,b] to [0,1], clamped — for sequencing phases inside one scene
+    function seg(p, a, b) { return clamp01((p - a) / (b - a)); }
+
+    // Progress through a pinned scene: 0 when its top hits the viewport top,
+    // 1 when its bottom reaches the viewport bottom.
+    var vh = window.innerHeight;
+    function sceneProgress(el, y) {
+        return clamp01((y - el.offsetTop) / (el.offsetHeight - vh));
+    }
+
+    /* ---------- morph shapes: N points around a circle, radius varies per shape ---------- */
+    var N = 32, TAU = Math.PI * 2;
+    function shapePts(fn) {
+        var pts = [];
+        for (var i = 0; i < N; i++) {
+            var a = (i / N) * TAU;
+            var r = fn(a, i);
+            pts.push([Math.cos(a) * r, Math.sin(a) * r]);
+        }
+        return pts;
+    }
+    var SHAPES = [
+        shapePts(function (a) { return 88 + 16 * Math.sin(a * 3 + 1.7) + 9 * Math.sin(a * 5 + 0.4); }), // blob
+        shapePts(function (a, i) { return i % 4 < 2 ? 105 : 52; }),                                     // star
+        shapePts(function (a) { return 72 + 28 * Math.sin(a * 6); }),                                   // flower
+        shapePts(function () { return 90; })                                                            // circle
+    ];
+    var MORPH_LABELS = ['a blob', 'a star', 'a flower', 'a circle'];
+
+    // Catmull-Rom -> cubic bezier so the outline stays smooth while morphing
+    function toPath(pts) {
+        var d = 'M' + pts[0][0].toFixed(1) + ',' + pts[0][1].toFixed(1);
+        for (var i = 0; i < N; i++) {
+            var p0 = pts[(i - 1 + N) % N], p1 = pts[i], p2 = pts[(i + 1) % N], p3 = pts[(i + 2) % N];
+            var c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = p1[1] + (p2[1] - p0[1]) / 6;
+            var c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = p2[1] - (p3[1] - p1[1]) / 6;
+            d += 'C' + c1x.toFixed(1) + ',' + c1y.toFixed(1) + ' ' + c2x.toFixed(1) + ',' + c2y.toFixed(1) + ' ' + p2[0].toFixed(1) + ',' + p2[1].toFixed(1);
+        }
+        return d + 'Z';
+    }
+    function morphBetween(A, B, t) {
+        var pts = [];
+        for (var i = 0; i < N; i++) pts.push([lerp(A[i][0], B[i][0], t), lerp(A[i][1], B[i][1], t)]);
+        return pts;
+    }
+
+    /* ---------- element refs ---------- */
+    var $ = function (id) { return document.getElementById(id); };
+    var progressBar = $('progressBar'), heroContent = $('heroContent'),
+        zoomSec = $('zoom'), zoomWord = $('zoomWord'),
+        portals = [$('portal1'), $('portal2'), $('portal3'), $('portal4'), $('portal5')],
+        cubeSec = $('cube'), cubeEl = $('cubeEl'), cubeTitle = $('cubeTitle'),
+        morphSec = $('morph'), morphPath = $('morphPath'), morphLabel = $('morphLabel'),
+        gallerySec = $('gallery'), track = $('track');
+
+    morphPath.setAttribute('d', toPath(SHAPES[0]));
+    if (reduceMotion) return; // static page for users who opted out of motion
+
+    var mouseX = 0, mouseY = 0;
+    window.addEventListener('mousemove', function (e) {
+        mouseX = (e.clientX / window.innerWidth - 0.5) * 2;   // -1 .. 1
+        mouseY = (e.clientY / window.innerHeight - 0.5) * 2;
+    }, { passive: true });
+    window.addEventListener('resize', function () { vh = window.innerHeight; }, { passive: true });
+
+    /* ---------- the single rAF loop ----------
+       One loop reads a lerp-smoothed scroll value and writes transforms.
+       Reads and writes are batched; nothing here triggers layout per-frame
+       except the cached offsetTop lookups. */
+    var smoothY = window.scrollY;
+    var docH = 0, lastMorphLabel = -1;
+
+    function frame(now) {
+        var targetY = window.scrollY;
+        smoothY += (targetY - smoothY) * 0.1;                 // the "buttery" lag
+        if (Math.abs(targetY - smoothY) < 0.1) smoothY = targetY;
+        docH = document.documentElement.scrollHeight - vh;
+
+        // top progress bar
+        progressBar.style.transform = 'scaleX(' + clamp01(smoothY / docH) + ')';
+
+        // HERO — layers drift at different speeds (classic parallax) + mouse depth
+        var heroP = clamp01(smoothY / vh);
+        heroContent.style.transform = 'translateY(' + (smoothY * 0.45) + 'px) scale(' + (1 - heroP * 0.15) + ')';
+        heroContent.style.opacity = 1 - heroP * 1.2;
+        for (var i = 0; i < orbs.length; i++) {
+            var o = orbs[i];
+            var floatY = Math.sin(now / 1600 + o.seed) * 12 * o.depth;
+            o.el.style.transform = 'translate3d('
+                + (mouseX * 40 * o.depth) + 'px,'
+                + (-smoothY * o.depth * 0.6 + floatY + mouseY * 25 * o.depth) + 'px, 0)';
+        }
+
+        // SCENE 1 — fly through a tunnel of rings, then the word zooms past the camera.
+        // Windows overlap so at least one ring is always in a visible scale range.
+        var zp = sceneProgress(zoomSec, smoothY);
+        for (var r = 0; r < portals.length; r++) {
+            var from = r * 0.11, t2 = seg(zp, from, from + 0.42);
+            portals[r].style.transform = 'scale(' + lerp(0.15, 9, easeInOut(t2)) + ')';
+            portals[r].style.opacity = t2 <= 0 || t2 >= 1 ? 0 : Math.min(1, t2 * 5) * (1 - seg(t2, 0.65, 1));
+        }
+        var wt = seg(zp, 0.5, 1);
+        zoomWord.style.transform = 'scale(' + lerp(0.2, 7, easeInOut(wt)) + ')';
+        zoomWord.style.opacity = Math.min(1, wt * 3) * (1 - seg(wt, 0.7, 1));
+
+        // SCENE 2 — cube tumbles, scales in and back out
+        var cp = sceneProgress(cubeSec, smoothY);
+        var spin = easeInOut(cp);
+        var cScale = 0.4 + Math.sin(cp * Math.PI) * 1.1;      // in .4 → peak 1.5 → out .4
+        cubeEl.style.transform = 'scale(' + cScale + ') rotateX(' + (spin * 420) + 'deg) rotateY(' + (spin * 640) + 'deg)';
+        cubeTitle.style.opacity = Math.sin(cp * Math.PI);
+        cubeTitle.style.transform = 'translateY(' + (1 - cp) * 30 + 'px)';
+
+        // SCENE 3 — interpolate anchor points across the 4 shapes + rotate + recolor
+        var mp = sceneProgress(morphSec, smoothY);
+        var stage = Math.min(mp * (SHAPES.length - 1), SHAPES.length - 1.0001);
+        var idx = Math.floor(stage);
+        var t = easeInOut(stage - idx);
+        morphPath.setAttribute('d', toPath(morphBetween(SHAPES[idx], SHAPES[idx + 1], t)));
+        morphPath.setAttribute('transform', 'rotate(' + (mp * 180) + ')');
+        var hue = mp * 220;
+        $('gradA').setAttribute('stop-color', 'hsl(' + (192 + hue) % 360 + ' 78% 53%)');
+        $('gradB').setAttribute('stop-color', 'hsl(' + (255 + hue) % 360 + ' 80% 62%)');
+        var labelIdx = t > 0.5 ? idx + 1 : idx;
+        if (labelIdx !== lastMorphLabel) {
+            lastMorphLabel = labelIdx;
+            morphLabel.textContent = '…becoming ' + MORPH_LABELS[labelIdx];
+        }
+
+        // SCENE 4 — vertical scroll drives horizontal travel
+        var gp = sceneProgress(gallerySec, smoothY);
+        var overflow = track.scrollWidth - window.innerWidth;
+        track.style.transform = 'translate3d(' + (-easeInOut(gp) * overflow) + 'px,0,0)';
+
+        requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
