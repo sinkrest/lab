@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Roman Martins — Motion Edition</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+    /* Palette: romanmartins.com tokens + amber "factory" hue that hands
+       over to the indigo "AI" hue as the story progresses. */
+    :root {
+        --bg: #080810;
+        --surface: #0f0f1a;
+        --ink: #f0f0f8;
+        --muted: #8888aa;
+        --faint: rgba(255,255,255,0.35);
+        --border: rgba(255,255,255,0.08);
+        --ai: #6366f1;
+        --ai-soft: #818cf8;
+        --violet: #a855f7;
+        --factory: #f59e0b;
+        --ok: #34d399;
+        --mono: 'JetBrains Mono', ui-monospace, monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: auto; }
+    body {
+        font-family: 'Inter', -apple-system, system-ui, sans-serif;
+        background: var(--bg); color: var(--ink);
+        overflow-x: hidden;
+        -webkit-font-smoothing: antialiased;
+    }
+    ::selection { background: rgba(99,102,241,0.35); color: #fff; }
+    a { color: inherit; }
+
+    .grid-bg {
+        background-image: radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px);
+        background-size: 28px 28px;
+    }
+    .eyebrow {
+        font-family: var(--mono); font-size: .72rem; letter-spacing: .28em;
+        text-transform: uppercase; color: rgba(129,140,248,0.75);
+    }
+
+    /* ---------- fixed chrome ---------- */
+    .progress {
+        position: fixed; top: 0; left: 0; height: 2px; width: 100%;
+        background: linear-gradient(90deg, var(--factory), var(--ai), var(--violet));
+        transform-origin: left center; transform: scaleX(0); z-index: 60;
+    }
+    .rail {
+        position: fixed; right: 1.4rem; top: 50%; transform: translateY(-50%);
+        display: flex; flex-direction: column; gap: 1rem; z-index: 60;
+    }
+    .rail a {
+        width: 8px; height: 8px; border-radius: 50%;
+        background: rgba(255,255,255,0.15); display: block;
+        transition: background .3s, transform .3s;
+    }
+    .rail a.active { background: var(--ai-soft); transform: scale(1.5); box-shadow: 0 0 10px rgba(99,102,241,0.7); }
+    @media (max-width: 720px) { .rail { display: none; } }
+
+    /* ---------- pinned-scene scaffolding ---------- */
+    .scene { position: relative; }
+    .scene .pin {
+        position: sticky; top: 0; height: 100vh; overflow: hidden;
+        display: flex; align-items: center; justify-content: center;
+    }
+
+    /* ---------- hero ---------- */
+    .hero { height: 100vh; position: relative; overflow: hidden;
+        display: flex; align-items: center; justify-content: center; }
+    .particle { position: absolute; border-radius: 50%; filter: blur(1px); will-change: transform; }
+    .hero-inner { position: relative; z-index: 2; text-align: center; max-width: 760px; padding: 0 1.5rem; will-change: transform, opacity; }
+    .badge {
+        display: inline-flex; align-items: center; gap: .5rem;
+        border: 1px solid rgba(99,102,241,0.25); background: rgba(99,102,241,0.08);
+        border-radius: 999px; padding: .4rem .9rem; margin-bottom: 2rem;
+        font-size: .74rem; font-weight: 500; letter-spacing: .06em; color: rgba(165,180,252,0.85);
+        animation: rise .7s ease .1s both;
+    }
+    .badge .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 8px rgba(52,211,153,0.8); }
+    .hero-name {
+        font-size: clamp(3rem, 11vw, 7.5rem); font-weight: 900;
+        letter-spacing: -.03em; line-height: .95; color: #fff; text-wrap: balance;
+    }
+    .hero-name .ltr { display: inline-block; animation: assemble .9s cubic-bezier(.2,.85,.25,1) both; }
+    /* gradient must live on the letter spans — background-clip:text on the
+       parent can't reach text nested inside inline-block children */
+    .hero-name .last .ltr {
+        background: linear-gradient(135deg, #818cf8 0%, #a855f7 60%, #c084fc 100%);
+        -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .typer {
+        height: 2.2rem; margin-top: 1.4rem; font-size: clamp(1rem, 2.6vw, 1.35rem);
+        font-weight: 500; color: rgba(240,240,248,0.55); animation: rise .7s ease .6s both;
+    }
+    .typer .caret { color: var(--ai-soft); animation: blink 1s steps(1) infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+    .hero-desc {
+        margin: 1.6rem auto 0; max-width: 34rem; color: var(--muted);
+        font-size: 1.02rem; line-height: 1.75; animation: rise .7s ease .8s both;
+    }
+    .ctas { display: flex; gap: .9rem; justify-content: center; margin-top: 2.4rem; flex-wrap: wrap; animation: rise .7s ease 1s both; }
+    .btn {
+        padding: .8rem 1.5rem; border-radius: 12px; font-size: .88rem; font-weight: 600;
+        text-decoration: none; transition: transform .2s, box-shadow .2s, border-color .2s;
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .btn.primary { background: var(--ai); color: #fff; box-shadow: 0 8px 24px rgba(99,102,241,0.25); }
+    .btn.primary:hover { box-shadow: 0 12px 32px rgba(99,102,241,0.4); }
+    .btn.ghost { border: 1px solid var(--border); color: rgba(240,240,248,0.7); }
+    .btn.ghost:hover { border-color: rgba(255,255,255,0.25); color: #fff; }
+    .hero-hint {
+        position: absolute; bottom: 2rem; left: 50%; transform: translateX(-50%);
+        display: flex; flex-direction: column; align-items: center; gap: .5rem;
+        color: var(--faint); font-family: var(--mono); font-size: .68rem; letter-spacing: .3em; text-transform: uppercase;
+        animation: rise 1s ease 1.4s both;
+    }
+    .hero-hint::after { content: ''; width: 1px; height: 42px; background: linear-gradient(to bottom, rgba(255,255,255,0.3), transparent); }
+    @keyframes rise { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: none; } }
+    @keyframes assemble { from { opacity: 0; transform: translateY(.6em) rotate(8deg) scale(.6); } to { opacity: 1; transform: none; } }
+
+    /* ---------- bridge: gear -> neuron morph ---------- */
+    #bridge { height: 420vh; }
+    #bridge .pin { flex-direction: column; gap: 1rem; }
+    #bridge svg { width: min(58vmin, 440px); height: min(58vmin, 440px); overflow: visible; }
+    .bridge-head {
+        font-size: clamp(1.6rem, 4.5vw, 2.8rem); font-weight: 800; letter-spacing: -.02em;
+        color: #fff; text-align: center; padding: 0 1.5rem; text-wrap: balance;
+    }
+    .bridge-line {
+        min-height: 3.2em; max-width: 34rem; padding: 0 1.5rem; text-align: center;
+        color: var(--muted); font-size: 1.05rem; line-height: 1.7; will-change: opacity, transform;
+    }
+
+    /* ---------- career conveyor ---------- */
+    #career { height: 450vh; }
+    #career .pin { flex-direction: column; align-items: flex-start; justify-content: center; }
+    .career-head { padding: 0 8vw; margin-bottom: 3rem; }
+    .career-head h2 { font-size: clamp(1.6rem, 4vw, 2.6rem); font-weight: 800; letter-spacing: -.02em; margin-top: .6rem; }
+    .belt { position: relative; width: 100%; }
+    .belt-line {
+        position: absolute; top: 1.75rem; left: 0; height: 2px; width: 100%;
+        background: linear-gradient(90deg, var(--factory), #b45309 25%, var(--ai) 70%, var(--violet));
+        opacity: .35;
+    }
+    .belt-track { display: flex; gap: 3.5rem; padding: 0 8vw; will-change: transform; }
+    .station { flex: 0 0 min(78vw, 460px); position: relative; }
+    .station .node {
+        width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--bg);
+        margin: 1.35rem 0 1.6rem; position: relative; z-index: 2;
+    }
+    .station .year {
+        position: absolute; top: -1.2rem; right: 0; font-family: var(--mono);
+        font-size: clamp(3.5rem, 8vw, 5.5rem); font-weight: 500; color: rgba(255,255,255,0.045);
+        pointer-events: none;
+    }
+    .station .card {
+        background: rgba(15,15,26,0.8); border: 1px solid var(--border);
+        backdrop-filter: blur(12px); border-radius: 16px; padding: 1.6rem;
+    }
+    .station .period { font-family: var(--mono); font-size: .7rem; color: var(--faint); letter-spacing: .08em; }
+    .station h3 { font-size: 1.15rem; font-weight: 700; color: #fff; margin: .5rem 0 .15rem; }
+    .station .company { font-size: .82rem; color: var(--ai-soft); margin-bottom: .9rem; }
+    .station p { font-size: .88rem; color: var(--muted); line-height: 1.65; margin-bottom: 1rem; }
+    .tags { display: flex; flex-wrap: wrap; gap: .45rem; }
+    .tag {
+        font-size: .68rem; font-weight: 500; padding: .28rem .65rem; border-radius: 999px;
+        background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.2); color: rgba(165,180,252,0.8);
+    }
+    .station:nth-child(1) .node { background: var(--factory); box-shadow: 0 0 12px rgba(245,158,11,0.7); }
+    .station:nth-child(2) .node { background: #d97706; box-shadow: 0 0 12px rgba(217,119,6,0.6); }
+    .station:nth-child(3) .node { background: var(--ai); box-shadow: 0 0 12px rgba(99,102,241,0.7); }
+    .station:nth-child(4) .node { background: var(--violet); box-shadow: 0 0 12px rgba(168,85,247,0.7); }
+    .station:nth-child(1) .tag { background: rgba(245,158,11,0.08); border-color: rgba(245,158,11,0.25); color: rgba(252,211,77,0.8); }
+    .station:nth-child(2) .tag { background: rgba(217,119,6,0.08); border-color: rgba(217,119,6,0.25); color: rgba(251,191,36,0.75); }
+
+    /* ---------- numbers fly-by ---------- */
+    #numbers { height: 400vh; }
+    #numbers .pin { background: radial-gradient(ellipse at center, #0d0d1c 0%, var(--bg) 70%); }
+    .fly { position: absolute; text-align: center; will-change: transform, opacity; opacity: 0; }
+    .fly .value {
+        font-size: clamp(4rem, 14vw, 10rem); font-weight: 900; letter-spacing: -.03em;
+        background: linear-gradient(135deg, #fff 20%, #818cf8 120%);
+        -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .fly .label { font-family: var(--mono); font-size: .8rem; letter-spacing: .3em; text-transform: uppercase; color: var(--muted); margin-top: .6rem; }
+    .fly.amber .value { background: linear-gradient(135deg, #fff 20%, var(--factory) 130%); -webkit-background-clip: text; background-clip: text; }
+    .numbers-close {
+        position: absolute; max-width: 30rem; text-align: center; padding: 0 1.5rem;
+        font-size: clamp(1.2rem, 3vw, 1.7rem); font-weight: 700; color: #fff; line-height: 1.5;
+        will-change: opacity, transform; opacity: 0; text-wrap: balance;
+    }
+    .numbers-close em { font-style: normal; color: var(--ai-soft); }
+
+    /* ---------- work gallery ---------- */
+    #work { height: 500vh; }
+    #work .pin { flex-direction: column; align-items: flex-start; justify-content: center; }
+    .work-head { padding: 0 8vw; margin-bottom: 2.5rem; }
+    .work-head h2 { font-size: clamp(1.6rem, 4vw, 2.6rem); font-weight: 800; letter-spacing: -.02em; margin-top: .6rem; }
+    .work-head p { color: var(--muted); margin-top: .5rem; max-width: 32rem; line-height: 1.6; }
+    .work-track { display: flex; gap: 2rem; padding: 0 8vw; will-change: transform; align-items: stretch; }
+    .proj {
+        flex: 0 0 min(82vw, 440px); border-radius: 18px; padding: 1.8rem;
+        background: rgba(15,15,26,0.8); border: 1px solid var(--border);
+        backdrop-filter: blur(12px); display: flex; flex-direction: column; position: relative; overflow: hidden;
+    }
+    .proj::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--stripe, var(--ai)); }
+    .proj .icon { font-size: 1.9rem; margin-bottom: 1rem; }
+    .pill {
+        display: inline-flex; align-items: center; gap: .4rem; align-self: flex-start;
+        font-size: .68rem; font-weight: 600; padding: .3rem .7rem; border-radius: 999px;
+        border: 1px solid rgba(52,211,153,0.25); background: rgba(52,211,153,0.08); color: var(--ok);
+        margin-bottom: .9rem;
+    }
+    .pill::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+    .proj h3 { font-size: 1.2rem; font-weight: 700; color: #fff; margin-bottom: .6rem; }
+    .proj > p { font-size: .87rem; color: var(--muted); line-height: 1.65; margin-bottom: 1.1rem; }
+    .facts { display: grid; gap: .6rem; margin-bottom: 1.1rem; }
+    .fact { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); border-radius: 10px; padding: .6rem .8rem; }
+    .fact .k { font-size: .66rem; color: var(--faint); margin-bottom: .15rem; }
+    .fact .v { font-size: .8rem; color: rgba(240,240,248,0.75); line-height: 1.45; }
+    .proj .links { display: flex; gap: .6rem; flex-wrap: wrap; margin-top: auto; padding-top: 1rem; }
+    .plink {
+        font-size: .74rem; font-weight: 600; text-decoration: none; padding: .45rem .85rem;
+        border-radius: 9px; border: 1px solid var(--border); color: rgba(240,240,248,0.6);
+        transition: color .2s, border-color .2s;
+    }
+    .plink:hover { color: #fff; border-color: rgba(255,255,255,0.25); }
+    .plink.hot { border-color: rgba(99,102,241,0.35); color: var(--ai-soft); }
+    .plink.hot:hover { border-color: rgba(99,102,241,0.7); }
+    .proj.lab { justify-content: center; text-align: center; border-color: rgba(99,102,241,0.3); background: linear-gradient(160deg, rgba(99,102,241,0.1), rgba(15,15,26,0.8)); }
+    .proj.lab .big { font-size: 2.6rem; margin-bottom: 1rem; }
+    .proj.lab p { margin: 0 auto 1.4rem; }
+    .proj.lab .links { justify-content: center; margin-top: 0; }
+
+    /* ---------- how i work (calm section) ---------- */
+    .how { max-width: 1060px; margin: 0 auto; padding: 9rem 1.5rem 7rem; }
+    .how h2 { font-size: clamp(1.6rem, 4vw, 2.6rem); font-weight: 800; letter-spacing: -.02em; margin-top: .6rem; }
+    .how .lede { color: var(--muted); max-width: 38rem; line-height: 1.75; margin-top: 1rem; font-size: 1.02rem; }
+    .how-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.1rem; margin-top: 3rem; }
+    .how-card {
+        border: 1px solid var(--border); border-radius: 14px; padding: 1.4rem;
+        background: rgba(255,255,255,0.02);
+        opacity: 0; transform: translateY(28px);
+        transition: opacity .7s ease, transform .7s cubic-bezier(.2,.8,.2,1);
+    }
+    .how-card.in { opacity: 1; transform: none; }
+    .how-card .glyph { font-size: 1.4rem; margin-bottom: .8rem; }
+    .how-card h3 { font-size: .95rem; font-weight: 700; color: #fff; margin-bottom: .4rem; }
+    .how-card p { font-size: .84rem; color: var(--muted); line-height: 1.65; }
+    .stack { margin-top: 3.5rem; }
+    .stack .tags { margin-top: 1.2rem; }
+
+    /* ---------- contact ---------- */
+    .contact { position: relative; padding: 8rem 1.5rem 4rem; overflow: hidden; }
+    .contact::before {
+        content: ''; position: absolute; top: -20%; left: 50%; transform: translateX(-50%);
+        width: 700px; height: 700px; border-radius: 50%;
+        background: radial-gradient(circle, rgba(99,102,241,0.09) 0%, transparent 65%); pointer-events: none;
+    }
+    .contact-inner { max-width: 1060px; margin: 0 auto; position: relative; }
+    .contact h2 { font-size: clamp(2rem, 5.5vw, 3.4rem); font-weight: 900; letter-spacing: -.02em; line-height: 1.1; margin-top: .8rem; text-wrap: balance; }
+    .contact h2 em {
+        font-style: normal;
+        background: linear-gradient(135deg, #818cf8 0%, #a855f7 60%, #c084fc 100%);
+        -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .contact .lede { color: var(--muted); max-width: 30rem; line-height: 1.75; margin-top: 1.2rem; font-size: 1.02rem; }
+    .contact-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-top: 3rem; max-width: 620px; }
+    .ccard {
+        display: flex; align-items: center; gap: 1rem; padding: 1.1rem 1.3rem;
+        border: 1px solid var(--border); border-radius: 14px; text-decoration: none;
+        transition: border-color .25s, background .25s, transform .25s;
+    }
+    .ccard:hover { border-color: rgba(99,102,241,0.4); background: rgba(99,102,241,0.06); transform: translateY(-3px); }
+    .ccard svg { width: 20px; height: 20px; fill: rgba(240,240,248,0.7); flex-shrink: 0; }
+    .ccard .t { font-size: .9rem; font-weight: 600; color: rgba(240,240,248,0.85); }
+    .ccard .s { font-size: .74rem; color: var(--faint); margin-top: .1rem; }
+    .footer {
+        margin-top: 6rem; padding-top: 2rem; border-top: 1px solid rgba(255,255,255,0.05);
+        display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+        font-size: .74rem; color: rgba(255,255,255,0.25);
+    }
+    .footer .mono { font-family: var(--mono); }
+
+    @media (prefers-reduced-motion: reduce) {
+        .scene { height: auto !important; }
+        .scene .pin { position: static; height: auto; min-height: 60vh; overflow: visible; }
+        .belt-track, .work-track { overflow-x: auto; padding-bottom: 1rem; }
+        .fly, .numbers-close { position: static; opacity: 1 !important; margin: 2rem auto; }
+        #numbers .pin { flex-direction: column; }
+        .how-card { opacity: 1; transform: none; }
+        [class*="hero"], .badge, .ctas, .typer { animation: none !important; }
+        .bridge-line { opacity: 1 !important; }
+    }
+</style>
+</head>
+<body>
+
+<div class="progress" id="progressBar"></div>
+
+<nav class="rail" id="rail" aria-label="Chapters">
+    <a href="#hero" title="Intro"></a>
+    <a href="#bridge" title="The Bridge"></a>
+    <a href="#career" title="Career"></a>
+    <a href="#numbers" title="Proof"></a>
+    <a href="#work" title="Work"></a>
+    <a href="#method" title="Method"></a>
+    <a href="#contact" title="Contact"></a>
+</nav>
+
+<!-- ============ HERO ============ -->
+<header class="hero grid-bg" id="hero">
+    <div id="particles"></div>
+    <div class="hero-inner" id="heroInner">
+        <div class="badge"><span class="dot"></span> Manufacturing × AI · Product Builder</div>
+        <h1 class="hero-name"><span id="nameFirst">Roman</span> <span id="nameLast" class="last">Martins</span></h1>
+        <div class="typer"><span id="typerText"></span><span class="caret">|</span></div>
+        <p class="hero-desc">10 years inside manufacturing operations — LEGO, industrial equipment,
+            global teams. Now I build AI tools in production: Claude agents, prompt architectures,
+            shipped products.</p>
+        <div class="ctas">
+            <a class="btn primary" href="#work">View My Work</a>
+            <a class="btn ghost" href="https://www.linkedin.com/in/romanmartins" target="_blank" rel="noopener noreferrer">Connect</a>
+            <a class="btn ghost" href="#contact">Get in Touch</a>
+        </div>
+    </div>
+    <div class="hero-hint">Scroll</div>
+</header>
+
+<!-- ============ BRIDGE: gear morphs into a neuron ============ -->
+<section class="scene" id="bridge">
+    <div class="pin">
+        <h2 class="bridge-head">Manufacturing roots. AI hands.</h2>
+        <svg viewBox="-130 -130 260 260" aria-hidden="true">
+            <defs>
+                <linearGradient id="bridgeGrad" x1="0" y1="0" x2="1" y2="1">
+                    <stop id="bgA" offset="0%" stop-color="#f59e0b"/>
+                    <stop id="bgB" offset="100%" stop-color="#fbbf24"/>
+                </linearGradient>
+            </defs>
+            <path id="bridgePath" fill="url(#bridgeGrad)" opacity="0.92"/>
+        </svg>
+        <p class="bridge-line" id="bridgeLine">Most AI PMs come from software. I came from factories.</p>
+    </div>
+</section>
+
+<!-- ============ CAREER CONVEYOR ============ -->
+<section class="scene" id="career">
+    <div class="pin grid-bg">
+        <div class="career-head">
+            <p class="eyebrow">Career Arc · 2009 → Now</p>
+            <h2>Sixteen years, one direction</h2>
+        </div>
+        <div class="belt">
+            <div class="belt-line"></div>
+            <div class="belt-track" id="beltTrack">
+                <div class="station">
+                    <span class="year">2009</span>
+                    <div class="node"></div>
+                    <div class="card">
+                        <div class="period">2009 – 2015</div>
+                        <h3>Engineer → Lead Professional</h3>
+                        <div class="company">LEGO Group</div>
+                        <p>Grew from injection molding technician to Lead Professional in LEGO's Concept Factory. Led manufacturing innovation initiatives, established new technological test environments, and coordinated global engineering teams.</p>
+                        <div class="tags"><span class="tag">Engineering</span><span class="tag">Manufacturing</span><span class="tag">Innovation</span></div>
+                    </div>
+                </div>
+                <div class="station">
+                    <span class="year">2016</span>
+                    <div class="node"></div>
+                    <div class="card">
+                        <div class="period">Dec 2016 – Mar 2021</div>
+                        <h3>Senior Engineer & Team Lead</h3>
+                        <div class="company">DIS / CREADIS</div>
+                        <p>Led cross-functional engineering teams delivering complex industrial and manufacturing solutions for global clients. Drove advanced manufacturing initiatives including additive manufacturing.</p>
+                        <div class="tags"><span class="tag">Engineering Leadership</span><span class="tag">Advanced Manufacturing</span><span class="tag">Cross-functional Teams</span></div>
+                    </div>
+                </div>
+                <div class="station">
+                    <span class="year">2021</span>
+                    <div class="node"></div>
+                    <div class="card">
+                        <div class="period">Jun 2021 – Feb 2025</div>
+                        <h3>AI Product Lead & Founder</h3>
+                        <div class="company">Dasbinjaich.de / Unlimited Art Agency</div>
+                        <p>Led product strategy for a personalised AI-powered publishing platform. Built end-to-end AI workflows, prompt architectures, and QA systems — scaling to 1,000+ books produced. Also ran an AI automation agency for business clients.</p>
+                        <div class="tags"><span class="tag">AI Products</span><span class="tag">Entrepreneurship</span><span class="tag">LLM Integration</span></div>
+                    </div>
+                </div>
+                <div class="station">
+                    <span class="year">2025</span>
+                    <div class="node"></div>
+                    <div class="card">
+                        <div class="period">Feb 2025 – Present</div>
+                        <h3>Product Development Manager</h3>
+                        <div class="company">JENSEN Group</div>
+                        <p>Leading a 10-person cross-functional product development department. Responsible for new product development and lifecycle upgrades of complex industrial equipment across Europe and China.</p>
+                        <div class="tags"><span class="tag">Product Strategy</span><span class="tag">Team Leadership</span><span class="tag">Roadmapping</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ NUMBERS FLY-BY ============ -->
+<section class="scene" id="numbers">
+    <div class="pin">
+        <div class="fly amber" id="fly0"><div class="value">10+</div><div class="label">Years engineering</div></div>
+        <div class="fly" id="fly1"><div class="value">4+</div><div class="label">Years with AI</div></div>
+        <div class="fly" id="fly2"><div class="value">15+</div><div class="label">AI tools built</div></div>
+        <div class="fly" id="fly3"><div class="value">1,000+</div><div class="label">Books shipped</div></div>
+        <p class="numbers-close" id="numbersClose">The rare bridge between <em>factory-floor reality</em> and <em>AI implementation</em>.</p>
+    </div>
+</section>
+
+<!-- ============ WORK ============ -->
+<section class="scene" id="work">
+    <div class="pin">
+        <div class="work-head">
+            <p class="eyebrow">Work</p>
+            <h2>Products I've built</h2>
+            <p>Each project started where software meets the physical world — and ended with something working.</p>
+        </div>
+        <div class="work-track" id="workTrack">
+            <div class="proj" style="--stripe: linear-gradient(90deg,#10b981,#0d9488)">
+                <div class="icon">📚</div>
+                <span class="pill">Shipped</span>
+                <h3>Personalised Children's Book Platform</h3>
+                <p>End-to-end AI product. Parents input a child's name and theme — the platform generates a personalised story with AI-illustrated pages and routes it through print-on-demand fulfilment.</p>
+                <div class="facts">
+                    <div class="fact"><div class="k">My Role</div><div class="v">Founder & Product Lead</div></div>
+                    <div class="fact"><div class="k">Outcome</div><div class="v">1,000+ books sold in Germany. Full lifecycle: idea → AI pipeline → fulfilment → revenue.</div></div>
+                </div>
+                <div class="tags"><span class="tag">LLM Integration</span><span class="tag">Product Design</span><span class="tag">Print-on-demand</span></div>
+                <div class="links">
+                    <a class="plink" href="https://heyzine.com/flip-book/32cd59b407.html" target="_blank" rel="noopener noreferrer">Sample Book →</a>
+                    <a class="plink hot" href="https://romanmartins.com/projects/ai-childrens-book" target="_blank" rel="noopener noreferrer">Case Study →</a>
+                </div>
+            </div>
+            <div class="proj" style="--stripe: linear-gradient(90deg,#f59e0b,#ea580c)">
+                <div class="icon">⏱</div>
+                <span class="pill">Live</span>
+                <h3>Downtime Cost Calculator</h3>
+                <p>Built for ops leaders who lose money every minute a line is down. Input revenue figures and incident history — get cost-per-minute of downtime, annual risk exposure, and a monitoring ROI breakdown with AI-generated executive insight.</p>
+                <div class="facts">
+                    <div class="fact"><div class="k">My Role</div><div class="v">Designer & Builder</div></div>
+                    <div class="fact"><div class="k">Outcome</div><div class="v">Turns scattered incident data into a business case for monitoring investment.</div></div>
+                </div>
+                <div class="tags"><span class="tag">Claude API</span><span class="tag">Manufacturing Ops</span><span class="tag">Cost Modelling</span></div>
+                <div class="links">
+                    <a class="plink" href="https://github.com/sinkrest/uptime-calculator" target="_blank" rel="noopener noreferrer">GitHub</a>
+                    <a class="plink hot" href="https://uptime-calculator-lime.vercel.app" target="_blank" rel="noopener noreferrer">Live Demo →</a>
+                </div>
+            </div>
+            <div class="proj" style="--stripe: linear-gradient(90deg,#6366f1,#06b6d4)">
+                <div class="icon">🔭</div>
+                <span class="pill">Live</span>
+                <h3>Stakeholder Lens — AI Roadmap Translator</h3>
+                <p>Paste your roadmap once. Get four audience-specific views — engineering, sales, exec, and customers — in seconds. Each view uses a distinct prompt architecture tuned to what that audience actually needs to hear.</p>
+                <div class="facts">
+                    <div class="fact"><div class="k">My Role</div><div class="v">Designer & Builder</div></div>
+                    <div class="fact"><div class="k">Outcome</div><div class="v">Eliminates hours of manual roadmap reformatting. Grounded in product context, not generic AI output.</div></div>
+                </div>
+                <div class="tags"><span class="tag">Claude API</span><span class="tag">Prompt Architecture</span><span class="tag">PM Tooling</span></div>
+                <div class="links">
+                    <a class="plink" href="https://github.com/sinkrest/stakeholder-lens" target="_blank" rel="noopener noreferrer">GitHub</a>
+                    <a class="plink" href="https://stakeholder-lens.vercel.app" target="_blank" rel="noopener noreferrer">Live Demo →</a>
+                    <a class="plink hot" href="https://romanmartins.com/projects/stakeholder-lens" target="_blank" rel="noopener noreferrer">Case Study →</a>
+                </div>
+            </div>
+            <div class="proj" style="--stripe: linear-gradient(90deg,#6366f1,#8b5cf6)">
+                <div class="icon">⬡</div>
+                <span class="pill">Live</span>
+                <h3>Implementation Scoping Tool</h3>
+                <p>Describe a business problem. Answer 3 AI-generated discovery questions. Get a structured implementation scope: recommended AI approach, automation table, phased rollout, risks, success metrics.</p>
+                <div class="facts">
+                    <div class="fact"><div class="k">My Role</div><div class="v">Designer & Builder</div></div>
+                    <div class="fact"><div class="k">Outcome</div><div class="v">Full AI implementation scope generated in under 2 minutes — no login required.</div></div>
+                </div>
+                <div class="tags"><span class="tag">Claude API</span><span class="tag">Structured Output</span><span class="tag">Vanilla JS</span></div>
+                <div class="links">
+                    <a class="plink" href="https://github.com/sinkrest/ai-scoping-tool" target="_blank" rel="noopener noreferrer">GitHub</a>
+                    <a class="plink" href="https://ai-scoping-tool.vercel.app" target="_blank" rel="noopener noreferrer">Live Demo →</a>
+                    <a class="plink hot" href="https://romanmartins.com/projects/ai-scoping-tool" target="_blank" rel="noopener noreferrer">Case Study →</a>
+                </div>
+            </div>
+            <div class="proj lab">
+                <div class="big">⚗️</div>
+                <h3>Roman's Lab</h3>
+                <p>The full collection — 15+ manufacturing ops tools, PM toolkit, and everything else I've shipped.</p>
+                <div class="links">
+                    <a class="plink hot" href="https://sinkrest.github.io/romans-lab" target="_blank" rel="noopener noreferrer">Enter the Lab →</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ HOW I WORK ============ -->
+<section class="how" id="method">
+    <p class="eyebrow">Method</p>
+    <h2>How I work</h2>
+    <p class="lede">Most AI PMs come from software. I came from factories. 10 years engineering complex
+        industrial products, then 4 years building AI in production. That intersection is rare —
+        and it's where the hardest AI problems actually live.</p>
+    <div class="how-grid">
+        <div class="how-card"><div class="glyph">🏭</div><h3>Industrial credibility</h3><p>I've shipped products that run on factory floors. I know what AI has to survive in the real world — not just demos.</p></div>
+        <div class="how-card"><div class="glyph">🤖</div><h3>Hands-on with AI</h3><p>Built agents, automated workflows, and shipped products using LLMs in production.</p></div>
+        <div class="how-card"><div class="glyph">🎯</div><h3>Product instinct</h3><p>From discovery to delivery. I know how to find the right problem before solving it.</p></div>
+        <div class="how-card"><div class="glyph">📐</div><h3>Small team mentality</h3><p>Most effective when everyone ships. No committees, no handoffs — just people who own things end to end.</p></div>
+    </div>
+    <div class="stack">
+        <p class="eyebrow">Tools & Stack</p>
+        <div class="tags">
+            <span class="tag">Claude</span><span class="tag">OpenAI API</span><span class="tag">Claude Code</span><span class="tag">AI Agents</span><span class="tag">Prompt Engineering</span><span class="tag">Python</span><span class="tag">Figma</span><span class="tag">Linear</span><span class="tag">Notion</span><span class="tag">n8n</span><span class="tag">Vercel</span><span class="tag">GitHub</span>
+        </div>
+    </div>
+</section>
+
+<!-- ============ CONTACT ============ -->
+<section class="contact" id="contact">
+    <div class="contact-inner">
+        <p class="eyebrow">Contact</p>
+        <h2>Let's build something<br><em>worth building</em></h2>
+        <p class="lede">Interested in product, collaboration, or just want to connect? I'm always happy
+            to talk to people who care about shipping great things.</p>
+        <div class="contact-cards">
+            <a class="ccard" href="https://www.linkedin.com/in/romanmartins" target="_blank" rel="noopener noreferrer">
+                <svg viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+                <div><div class="t">LinkedIn</div><div class="s">linkedin.com/in/romanmartins</div></div>
+            </a>
+            <a class="ccard" href="https://github.com/sinkrest" target="_blank" rel="noopener noreferrer">
+                <svg viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                <div><div class="t">GitHub</div><div class="s">github.com/sinkrest</div></div>
+            </a>
+        </div>
+        <div class="footer">
+            <span>© 2026 Roman Martins</span>
+            <span class="mono">Motion edition · a scroll-driven variant of romanmartins.com</span>
+        </div>
+    </div>
+</section>
+
+<script>
+(function () {
+    'use strict';
+    var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var $ = function (id) { return document.getElementById(id); };
+
+    /* ---------- hero: assemble the name letter by letter ---------- */
+    ['nameFirst', 'nameLast'].forEach(function (id, wordIdx) {
+        var el = $(id);
+        var keepClass = el.className;
+        el.innerHTML = el.textContent.split('').map(function (ch, i) {
+            return '<span class="ltr" style="animation-delay:' + (0.2 + wordIdx * 0.35 + i * 0.06) + 's">' + ch + '</span>';
+        }).join('');
+        el.className = keepClass;
+    });
+
+    /* ---------- hero: typewriter roles (same roles as romanmartins.com) ---------- */
+    var roles = ['AI Product Manager', 'Manufacturing × AI', 'Builder', 'Product Strategist'];
+    var typerEl = $('typerText'), roleIdx = 0, charIdx = 0, deleting = false;
+    function tickType() {
+        var current = roles[roleIdx];
+        if (!deleting) {
+            charIdx++;
+            typerEl.textContent = current.slice(0, charIdx);
+            if (charIdx === current.length) { deleting = true; return setTimeout(tickType, 2200); }
+            return setTimeout(tickType, 60);
+        }
+        charIdx--;
+        typerEl.textContent = current.slice(0, charIdx);
+        if (charIdx === 0) { deleting = false; roleIdx = (roleIdx + 1) % roles.length; }
+        setTimeout(tickType, 35);
+    }
+    if (reduceMotion) { typerEl.textContent = roles[0]; } else { setTimeout(tickType, 900); }
+
+    /* ---------- hero: particle field — amber sparks low (factory), indigo nodes high (AI) ---------- */
+    var particles = [];
+    (function () {
+        var field = $('particles');
+        for (var i = 0; i < 22; i++) {
+            var el = document.createElement('div');
+            el.className = 'particle';
+            var top = Math.random() * 100;
+            var indigo = top < 55;                       // upper region = AI, lower = factory
+            var c = indigo ? '99,102,241' : '245,158,11';
+            var size = indigo ? 8 + Math.random() * 80 : 3 + Math.random() * 8;
+            var depth = 0.15 + Math.random() * 0.85;
+            el.style.width = el.style.height = size + 'px';
+            el.style.left = (Math.random() * 100) + '%';
+            el.style.top = top + '%';
+            el.style.background = indigo
+                ? 'radial-gradient(circle at 35% 35%, rgba(' + c + ',' + (0.22 * depth + 0.06) + '), transparent 70%)'
+                : 'rgba(' + c + ',' + (0.3 * depth + 0.15) + ')';
+            field.appendChild(el);
+            particles.push({ el: el, depth: depth, seed: Math.random() * 1000 });
+        }
+    })();
+
+    /* ---------- helpers ---------- */
+    function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
+    function lerp(a, b, t) { return a + (b - a) * t; }
+    function easeInOut(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+    function seg(p, a, b) { return clamp01((p - a) / (b - a)); }
+    var vh = window.innerHeight;
+    function sceneProgress(el, y) { return clamp01((y - el.offsetTop) / (el.offsetHeight - vh)); }
+
+    /* ---------- bridge morph: gear -> blob -> neural spark ----------
+       Same-point-count shapes so morphing is plain point interpolation. */
+    var N = 60, TAU = Math.PI * 2;
+    function shapePts(fn) {
+        var pts = [];
+        for (var i = 0; i < N; i++) {
+            var a = (i / N) * TAU;
+            pts.push([Math.cos(a) * fn(a, i), Math.sin(a) * fn(a, i)]);
+        }
+        return pts;
+    }
+    var SHAPES = [
+        shapePts(function (a, i) { return i % 10 < 5 ? 98 : 74; }),                              // gear (6 teeth)
+        shapePts(function (a) { return 84 + 13 * Math.sin(a * 3 + 1.7) + 7 * Math.sin(a * 5); }), // organic blob
+        shapePts(function (a, i) { return i % 6 < 3 ? 104 : 56; })                               // neural spark
+    ];
+    var BRIDGE_LINES = [
+        'Most AI PMs come from software. I came from factories.',
+        '10 years engineering complex industrial products — then 4 years building AI in production.',
+        'The rare bridge between factory-floor reality and AI implementation.'
+    ];
+    function toPath(pts) {
+        var d = 'M' + pts[0][0].toFixed(1) + ',' + pts[0][1].toFixed(1);
+        for (var i = 0; i < N; i++) {
+            var p0 = pts[(i - 1 + N) % N], p1 = pts[i], p2 = pts[(i + 1) % N], p3 = pts[(i + 2) % N];
+            d += 'C' + (p1[0] + (p2[0] - p0[0]) / 6).toFixed(1) + ',' + (p1[1] + (p2[1] - p0[1]) / 6).toFixed(1)
+               + ' ' + (p2[0] - (p3[0] - p1[0]) / 6).toFixed(1) + ',' + (p2[1] - (p3[1] - p1[1]) / 6).toFixed(1)
+               + ' ' + p2[0].toFixed(1) + ',' + p2[1].toFixed(1);
+        }
+        return d + 'Z';
+    }
+    function morphBetween(A, B, t) {
+        var pts = [];
+        for (var i = 0; i < N; i++) pts.push([lerp(A[i][0], B[i][0], t), lerp(A[i][1], B[i][1], t)]);
+        return pts;
+    }
+
+    /* ---------- refs ---------- */
+    var progressBar = $('progressBar'), heroInner = $('heroInner'), heroSec = $('hero'),
+        bridgeSec = $('bridge'), bridgePath = $('bridgePath'), bridgeLine = $('bridgeLine'),
+        gradA = $('bgA'), gradB = $('bgB'),
+        careerSec = $('career'), beltTrack = $('beltTrack'),
+        numbersSec = $('numbers'), flies = [$('fly0'), $('fly1'), $('fly2'), $('fly3')], numbersClose = $('numbersClose'),
+        workSec = $('work'), workTrack = $('workTrack'),
+        railLinks = document.querySelectorAll('.rail a');
+    var chapters = ['hero', 'bridge', 'career', 'numbers', 'work', 'method', 'contact'].map($);
+
+    bridgePath.setAttribute('d', toPath(SHAPES[0]));
+
+    /* ---------- calm-section reveals ---------- */
+    var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+    }, { threshold: 0.25 });
+    document.querySelectorAll('.how-card').forEach(function (el, i) {
+        el.style.transitionDelay = (i * 0.1) + 's';
+        io.observe(el);
+    });
+
+    if (reduceMotion) return;
+
+    var mouseX = 0, mouseY = 0;
+    window.addEventListener('mousemove', function (e) {
+        mouseX = (e.clientX / window.innerWidth - 0.5) * 2;
+        mouseY = (e.clientY / window.innerHeight - 0.5) * 2;
+    }, { passive: true });
+    window.addEventListener('resize', function () { vh = window.innerHeight; }, { passive: true });
+
+    /* ---------- single rAF loop, lerp-smoothed scroll ---------- */
+    var smoothY = window.scrollY, lastBridgeStage = -1, lastChapter = -1;
+
+    function frame(now) {
+        var targetY = window.scrollY;
+        smoothY += (targetY - smoothY) * 0.1;
+        if (Math.abs(targetY - smoothY) < 0.1) smoothY = targetY;
+        var docH = document.documentElement.scrollHeight - vh;
+
+        progressBar.style.transform = 'scaleX(' + clamp01(smoothY / docH) + ')';
+
+        // rail highlight: chapter whose section contains the viewport midpoint
+        var mid = smoothY + vh * 0.5, active = 0;
+        for (var c = 0; c < chapters.length; c++) if (chapters[c].offsetTop <= mid) active = c;
+        if (active !== lastChapter) {
+            lastChapter = active;
+            railLinks.forEach(function (l, i) { l.classList.toggle('active', i === active); });
+        }
+
+        // HERO — content recedes; sparks and nodes drift at their own depths
+        var hp = clamp01(smoothY / vh);
+        heroInner.style.transform = 'translateY(' + smoothY * 0.4 + 'px) scale(' + (1 - hp * 0.12) + ')';
+        heroInner.style.opacity = 1 - hp * 1.25;
+        for (var i = 0; i < particles.length; i++) {
+            var pt = particles[i];
+            var bob = Math.sin(now / 1700 + pt.seed) * 10 * pt.depth;
+            pt.el.style.transform = 'translate3d(' + (mouseX * 34 * pt.depth) + 'px,'
+                + (-smoothY * pt.depth * 0.55 + bob + mouseY * 20 * pt.depth) + 'px,0)';
+        }
+
+        // BRIDGE — morph gear -> blob -> spark; hue crosses amber -> indigo -> violet
+        var bp = sceneProgress(bridgeSec, smoothY);
+        var stage = Math.min(bp * (SHAPES.length - 1), SHAPES.length - 1.0001);
+        var si = Math.floor(stage), st = easeInOut(stage - si);
+        bridgePath.setAttribute('d', toPath(morphBetween(SHAPES[si], SHAPES[si + 1], st)));
+        bridgePath.setAttribute('transform', 'rotate(' + bp * 150 + ') scale(' + (0.85 + Math.sin(bp * Math.PI) * 0.25) + ')');
+        // amber h38 -> indigo h239 going down through red/magenta (38 -> -121 ≡ 239)
+        var hA = 38 - 159 * bp, hB = 43 - 148 * bp; // ends at h239 / h255
+        gradA.setAttribute('stop-color', 'hsl(' + ((hA % 360) + 360) % 360 + ' 90% 55%)');
+        gradB.setAttribute('stop-color', 'hsl(' + ((hB % 360) + 360) % 360 + ' 88% 62%)');
+        var lineStage = st > 0.5 ? si + 1 : si;
+        if (lineStage !== lastBridgeStage) {
+            lastBridgeStage = lineStage;
+            bridgeLine.textContent = BRIDGE_LINES[lineStage];
+        }
+        // gentle pulse on the caption as stages hand over
+        bridgeLine.style.opacity = 0.45 + 0.55 * Math.abs(st - 0.5) * 2;
+
+        // CAREER — conveyor: vertical scroll pulls the belt left
+        var cp = sceneProgress(careerSec, smoothY);
+        var beltOverflow = beltTrack.scrollWidth - window.innerWidth;
+        beltTrack.style.transform = 'translate3d(' + (-easeInOut(cp) * beltOverflow) + 'px,0,0)';
+
+        // NUMBERS — each stat flies from deep to past the camera, staggered
+        var np = sceneProgress(numbersSec, smoothY);
+        for (var f = 0; f < flies.length; f++) {
+            var from = f * 0.17, t = seg(np, from, from + 0.34);
+            flies[f].style.transform = 'scale(' + lerp(0.12, 6.5, easeInOut(t)) + ')';
+            flies[f].style.opacity = t <= 0 || t >= 1 ? 0 : Math.min(1, t * 4) * (1 - seg(t, 0.62, 1));
+        }
+        var nc = seg(np, 0.82, 1);
+        numbersClose.style.opacity = nc;
+        numbersClose.style.transform = 'translateY(' + (1 - nc) * 40 + 'px)';
+
+        // WORK — horizontal project gallery
+        var wp = sceneProgress(workSec, smoothY);
+        var workOverflow = workTrack.scrollWidth - window.innerWidth;
+        workTrack.style.transform = 'translate3d(' + (-easeInOut(wp) * workOverflow) + 'px,0,0)';
+
+        requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
